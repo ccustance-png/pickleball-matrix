@@ -18,6 +18,16 @@ function RecordBadge({ wins, losses }: { wins: number; losses: number }) {
   );
 }
 
+function formatValue(v: string): string {
+  if (v === null || v === undefined || v === '') return '—';
+  const s = String(v);
+  const n = Number(s);
+  if (!isNaN(n) && s.trim() !== '') {
+    return Number.isInteger(n) ? s : n.toFixed(2);
+  }
+  return s;
+}
+
 function StatsGrid({ data }: { data: Record<string, string> }) {
   const entries = Object.entries(data).filter(([k]) => k !== '' && k !== 'PLAYER');
   if (entries.length === 0) return <p className="text-slate-500 text-sm">No data</p>;
@@ -26,7 +36,7 @@ function StatsGrid({ data }: { data: Record<string, string> }) {
       {entries.map(([k, v]) => (
         <div key={k} className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
           <dt className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">{k}</dt>
-          <dd className="text-slate-100 font-semibold">{v || '—'}</dd>
+          <dd className="text-slate-100 font-semibold">{formatValue(v)}</dd>
         </div>
       ))}
     </dl>
