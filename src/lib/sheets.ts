@@ -72,6 +72,25 @@ export async function getTabRows(tabName: string): Promise<string[][]> {
   }
 }
 
+export type EloEntry = { name: string; elo: number };
+
+export async function getEloRankings(): Promise<{ singles: EloEntry[]; doubles: EloEntry[] }> {
+  const rows = await getTabRows('ELO');
+  const data = rows.slice(1); // skip header
+
+  const doubles: EloEntry[] = data
+    .filter((r) => r[0] && r[1])
+    .map((r) => ({ name: String(r[0]), elo: Number(r[1]) }))
+    .sort((a, b) => b.elo - a.elo);
+
+  const singles: EloEntry[] = data
+    .filter((r) => r[3] && r[4])
+    .map((r) => ({ name: String(r[3]), elo: Number(r[4]) }))
+    .sort((a, b) => b.elo - a.elo);
+
+  return { singles, doubles };
+}
+
 export function tabToObjects(rows: string[][]): Record<string, string>[] {
   if (rows.length < 2) return [];
   const [headers, ...data] = rows;
