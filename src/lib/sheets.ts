@@ -99,12 +99,12 @@ export async function getEloRankings(): Promise<{ singles: EloEntry[]; doubles: 
   const rows = await getTabRows('ELO');
   const data = rows.slice(1); // skip header
 
-  const doubles: EloEntry[] = data
+  const singles: EloEntry[] = data
     .filter((r) => r[0] && r[1] && !isNaN(Number(r[1])))
     .map((r) => ({ name: String(r[0]), elo: Number(r[1]) }))
     .sort((a, b) => b.elo - a.elo);
 
-  const singles: EloEntry[] = data
+  const doubles: EloEntry[] = data
     .filter((r) => r[3] && r[4] && !isNaN(Number(r[4])))
     .map((r) => ({ name: String(r[3]), elo: Number(r[4]) }))
     .sort((a, b) => b.elo - a.elo);
