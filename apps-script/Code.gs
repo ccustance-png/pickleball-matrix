@@ -19,14 +19,46 @@ function doGet(e) {
     return json(tab.getDataRange().getDisplayValues());
   }
 
+  if (action === 'getProfile') {
+    var player = e.parameter.player.toUpperCase();
+    var sheet = ss.getSheetByName('PROFILES');
+    if (!sheet) return json({});
+    var rows = sheet.getDataRange().getValues();
+    for (var i = 1; i < rows.length; i++) {
+      if (rows[i][0] && rows[i][0].toString().toUpperCase() === player) {
+        return json({ player: rows[i][0], photoUrl: rows[i][1] || '', bio: rows[i][2] || '' });
+      }
+    }
+    return json({});
+  }
+
   return json({ error: 'Unknown action' });
 }
 
 function doPost(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('SCORESHEET');
   var data = JSON.parse(e.postData.contents);
 
+  if (data.action === 'upsertProfile') {
+    var sheet = ss.getSheetByName('PROFILES');
+    if (!sheet) {
+      sheet = ss.insertSheet('PROFILES');
+      sheet.appendRow(['PLAYER', 'PHOTO_URL', 'BIO']);
+    }
+    var rows = sheet.getDataRange().getValues();
+    for (var i = 1; i < rows.length; i++) {
+      if (rows[i][0] && rows[i][0].toString().toUpperCase() === data.player.toUpperCase()) {
+        sheet.getRange(i + 1, 2).setValue(data.photoUrl || '');
+        sheet.getRange(i + 1, 3).setValue(data.bio || '');
+        return json({ success: true });
+      }
+    }
+    sheet.appendRow([data.player.toUpperCase(), data.photoUrl || '', data.bio || '']);
+    return json({ success: true });
+  }
+
+  // Match submission
+  var sheet = ss.getSheetByName('SCORESHEET');
   var lastRow = sheet.getLastRow();
   var lastId = lastRow > 1 ? Number(sheet.getRange(lastRow, 1).getValue()) : 0;
   var newId = lastId + 1;

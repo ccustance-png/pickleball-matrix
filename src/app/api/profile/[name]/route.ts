@@ -1,0 +1,15 @@
+import { NextResponse } from 'next/server';
+import { getProfile, upsertProfile } from '@/lib/sheets';
+
+export async function GET(_req: Request, { params }: { params: Promise<{ name: string }> }) {
+  const { name } = await params;
+  const profile = await getProfile(decodeURIComponent(name).toUpperCase());
+  return NextResponse.json(profile ?? {});
+}
+
+export async function PUT(req: Request, { params }: { params: Promise<{ name: string }> }) {
+  const { name } = await params;
+  const { photoUrl, bio } = await req.json();
+  await upsertProfile(decodeURIComponent(name).toUpperCase(), photoUrl ?? '', bio ?? '');
+  return NextResponse.json({ success: true });
+}

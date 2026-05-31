@@ -1,6 +1,7 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { getAllMatches, getTabRows, tabToObjects, type MatchRow } from '@/lib/sheets';
+import { getAllMatches, getTabRows, tabToObjects, getProfile, type MatchRow } from '@/lib/sheets';
 
 export const revalidate = 60;
 
@@ -94,11 +95,12 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
   const { name: rawName } = await params;
   const name = decodeURIComponent(rawName).toUpperCase();
 
-  const [matches, singlesRows, doublesRows, eloRows] = await Promise.all([
+  const [matches, singlesRows, doublesRows, eloRows, profile] = await Promise.all([
     getAllMatches().catch(() => []),
     getTabRows('SINGLES').catch(() => []),
     getTabRows('DOUBLES').catch(() => []),
     getTabRows('ELO').catch(() => []),
+    getProfile(name),
   ]);
 
   const playerMatches = matches.filter((m) =>
@@ -130,16 +132,31 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <div className="w-14 h-14 rounded-full bg-lime-500/20 border border-lime-500/30 flex items-center justify-center text-2xl">
-          🏓
+        <div className="relative w-16 h-16 rounded-full overflow-hidden bg-lime-500/20 border-2 border-lime-500/30 flex items-center justify-center text-2xl shrink-0">
+          {profile?.photoUrl ? (
+            <Image src={profile.photoUrl} alt={name} fill className="object-cover" unoptimized />
+          ) : (
+            <span>🏓</span>
+          )}
         </div>
-        <div>
-          <h1 className="text-3xl font-bold text-slate-100">{name}</h1>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-3xl font-bold text-slate-100">{name}</h1>
+            <Link
+              href={`/players/${encodeURIComponent(name)}/edit`}
+              className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-slate-200 rounded-full transition-colors"
+            >
+              Edit Profile
+            </Link>
+          </div>
+          {profile?.bio && (
+            <p className="text-slate-400 text-sm mt-1">{profile.bio}</p>
+          )}
           <div className="mt-2">
             <RecordBadge wins={singlesWins + doublesWins} losses={playerMatches.length - singlesWins - doublesWins} />
           </div>
         </div>
-        <Link href="/players" className="ml-auto text-sm text-slate-500 hover:text-slate-300 transition-colors">
+        <Link href="/players" className="text-sm text-slate-500 hover:text-slate-300 transition-colors shrink-0">
           ← All players
         </Link>
       </div>

@@ -72,6 +72,27 @@ export async function getTabRows(tabName: string): Promise<string[][]> {
   }
 }
 
+export type PlayerProfile = { player: string; photoUrl: string; bio: string };
+
+export async function getProfile(name: string): Promise<PlayerProfile | null> {
+  try {
+    const url = `${scriptUrl()}?action=getProfile&player=${encodeURIComponent(name)}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    const data = await res.json();
+    if (!data.player) return null;
+    return data as PlayerProfile;
+  } catch {
+    return null;
+  }
+}
+
+export async function upsertProfile(player: string, photoUrl: string, bio: string): Promise<void> {
+  await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'upsertProfile', player, photoUrl, bio }),
+  });
+}
+
 export type EloEntry = { name: string; elo: number };
 
 export async function getEloRankings(): Promise<{ singles: EloEntry[]; doubles: EloEntry[] }> {
