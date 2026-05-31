@@ -136,7 +136,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
           {profile?.photoUrl ? (
             <Image src={profile.photoUrl} alt={name} fill className="object-cover" unoptimized />
           ) : (
-            <span>🏓</span>
+            <Image src="/logo.png" alt="Player" fill className="object-cover" />
           )}
         </div>
         <div className="flex-1 min-w-0">

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 
 const links = [
@@ -15,7 +16,7 @@ export default function Nav() {
     <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-10">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-8">
         <Link href="/" className="flex items-center gap-2 font-bold text-lime-400 text-lg tracking-tight">
-          <span className="text-2xl">🏓</span>
+          <Image src="/logo.png" alt="Pickleball Matrix" width={32} height={32} className="rounded-md" />
           Pickleball Matrix
         </Link>
         <nav className="flex gap-1 ml-auto">
