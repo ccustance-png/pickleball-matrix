@@ -8,18 +8,8 @@ type PlayerStat = {
   wins: number;
   losses: number;
   winRate: number;
+  elo: number | null;
 };
-
-function WinBar({ rate }: { rate: number }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-        <div className="h-full bg-lime-500 rounded-full" style={{ width: `${rate}%` }} />
-      </div>
-      <span className="text-xs text-slate-400 w-10 text-right">{rate}%</span>
-    </div>
-  );
-}
 
 function RankingTable({ players }: { players: PlayerStat[] }) {
   if (players.length === 0) return <p className="text-slate-500 text-sm py-4">No data yet.</p>;
@@ -30,9 +20,10 @@ function RankingTable({ players }: { players: PlayerStat[] }) {
           <tr className="bg-slate-900 text-slate-400 text-xs uppercase tracking-wider">
             <th className="px-4 py-3 text-left w-8">Rank</th>
             <th className="px-4 py-3 text-left">Player</th>
+            <th className="px-4 py-3 text-center">ELO</th>
             <th className="px-4 py-3 text-center">W</th>
             <th className="px-4 py-3 text-center">L</th>
-            <th className="px-4 py-3 text-left min-w-[140px]">Win Rate</th>
+            <th className="px-4 py-3 text-center">Win %</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-800">
@@ -47,9 +38,12 @@ function RankingTable({ players }: { players: PlayerStat[] }) {
                   {p.name}
                 </Link>
               </td>
-              <td className="px-4 py-3 text-center text-lime-400 font-bold">{p.wins}</td>
+              <td className="px-4 py-3 text-center font-mono font-bold text-lime-400">
+                {p.elo ?? '—'}
+              </td>
+              <td className="px-4 py-3 text-center text-slate-300">{p.wins}</td>
               <td className="px-4 py-3 text-center text-slate-400">{p.losses}</td>
-              <td className="px-4 py-3"><WinBar rate={p.winRate} /></td>
+              <td className="px-4 py-3 text-center text-slate-400">{p.winRate}%</td>
             </tr>
           ))}
         </tbody>
