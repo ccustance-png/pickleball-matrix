@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Pickleball Matrix',
-    short_name: 'PB Matrix',
+    name: 'Pickleball ELO',
+    short_name: 'PB ELO',
     description: 'Track pickleball match results and player stats',
     start_url: '/',
     display: 'standalone',

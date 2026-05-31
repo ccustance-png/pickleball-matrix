@@ -6,7 +6,7 @@ import Nav from '@/components/Nav';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Pickleball Matrix',
+  title: 'Pickleball ELO',
   description: 'Track matches, rankings, and player stats',
 };
 

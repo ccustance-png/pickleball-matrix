@@ -17,7 +17,7 @@ export default function Nav() {
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-8">
         <Link href="/" className="flex items-center gap-2 font-bold text-lime-400 text-lg tracking-tight">
           <Image src="/logo.png" alt="Pickleball Matrix" width={32} height={32} className="rounded-md" />
-          Pickleball Matrix
+          Pickleball ELO
         </Link>
         <nav className="flex gap-1 ml-auto">
           {links.map(({ href, label }) => (
