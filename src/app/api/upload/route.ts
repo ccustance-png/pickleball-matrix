@@ -1,5 +1,6 @@
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+import sharp from 'sharp';
 
 export async function POST(req: Request) {
   const form = await req.formData();
@@ -9,13 +10,24 @@ export async function POST(req: Request) {
 
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
 
-  const ext = file.name.split('.').pop() ?? 'jpg';
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
   const path = type === 'match'
-    ? `matches/${Date.now()}.${ext}`
-    : `profiles/${name.toUpperCase()}.${ext}`;
+    ? `matches/${Date.now()}.jpg`
+    : `profiles/${name.toUpperCase()}.jpg`;
 
-  const blob = await put(path, file, {
+  // Auto-orient based on EXIF data so the pixels are physically correct,
+  // then strip all metadata. This fixes upside-down / rotated photos in
+  // iMessage previews, social shares, and any client that ignores EXIF.
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const processed = await sharp(buffer)
+    .rotate()          // apply EXIF orientation to actual pixels
+    .withMetadata({})  // strip rotation tag (and other metadata) afterwards
+    .jpeg({ quality: 88 })
+    .toBuffer();
+
+  const blob = await put(path, processed, {
     access: 'public',
+    contentType: 'image/jpeg',
     addRandomSuffix: type === 'match',
   });
 
