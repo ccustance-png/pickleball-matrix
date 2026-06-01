@@ -8,11 +8,10 @@ export default function MatchHistory({ matches, name }: { matches: MatchRow[]; n
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-900 text-xs text-slate-400 uppercase tracking-wider">
-            <th className="px-4 py-2.5 text-left">#</th>
+            <th className="px-4 py-2.5 text-left">W/L</th>
             <th className="px-4 py-2.5 text-left">Date</th>
             <th className="px-4 py-2.5 text-left">Type</th>
             <th className="px-4 py-2.5 text-left">Opponent</th>
-            <th className="px-4 py-2.5 text-center">Result</th>
             <th className="px-4 py-2.5 text-right">Score</th>
           </tr>
         </thead>
@@ -24,7 +23,11 @@ export default function MatchHistory({ matches, name }: { matches: MatchRow[]; n
             const oppScore = m.team1.includes(name) ? m.team2Score : m.team1Score;
             return (
               <tr key={m.matchId} className="bg-slate-950 hover:bg-slate-900 transition-colors">
-                <td className="px-4 py-2.5 text-slate-500 font-mono text-xs">{m.matchId}</td>
+                <td className="px-4 py-2.5">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isWinner ? 'bg-lime-500/15 text-lime-400' : 'bg-red-500/10 text-red-400'}`}>
+                    {isWinner ? 'W' : 'L'}
+                  </span>
+                </td>
                 <td className="px-4 py-2.5 text-slate-400">{m.date}</td>
                 <td className="px-4 py-2.5 text-slate-400">{m.type}</td>
                 <td className="px-4 py-2.5 text-slate-300">
@@ -36,11 +39,6 @@ export default function MatchHistory({ matches, name }: { matches: MatchRow[]; n
                       </Link>
                     </span>
                   ))}
-                </td>
-                <td className="px-4 py-2.5 text-center">
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isWinner ? 'bg-lime-500/15 text-lime-400' : 'bg-red-500/10 text-red-400'}`}>
-                    {isWinner ? 'W' : 'L'}
-                  </span>
                 </td>
                 <td className="px-4 py-2.5 text-right font-mono">
                   <span className={isWinner ? 'text-lime-400 font-bold' : 'text-slate-400'}>{myScore}</span>
