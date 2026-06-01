@@ -1,12 +1,17 @@
 import type { MatchRow, MatchNote } from './sheets';
 
 // ── ELO replay helpers (mirrors Apps Script exactly) ─────────────────────────
-const K = 32;
-function dynK(e: number) { return K * (2000 / (Math.max(e, 400) + 1000)); }
+// K steps down as rating rises — mirrors chess FIDE tiers
+function dynK(e: number): number {
+  if (e < 1000) return 40;   // developing
+  if (e < 1400) return 20;   // standard
+  return 10;                  // elite
+}
 function expWin(a: number, b: number) { return 1 / (1 + Math.pow(10, (b - a) / 400)); }
+// Margin-of-victory multiplier — reduced coefficient (0.05) keeps swings chess-comparable
 function movMult(margin: number, exp1: number) {
   const c = 1 - Math.abs(exp1 - 0.5) * 2;
-  return 1 + margin * 0.1 * c;
+  return 1 + margin * 0.05 * c;
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
