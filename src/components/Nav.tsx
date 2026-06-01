@@ -21,14 +21,14 @@ export default function Nav() {
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-8">
         <Link href="/" className="flex items-center gap-2 font-bold text-lime-400 text-lg tracking-tight shrink-0">
           <Image src="/logo.png" alt="Pickleball ELO" width={32} height={32} className="rounded-md" />
-          Pickleball ELO
+          <span className="hidden sm:inline">Pickleball ELO</span>
         </Link>
-        <nav className="flex gap-1 ml-auto items-center">
+        <nav className="flex gap-0.5 ml-auto items-center">
           {links.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 pathname === href
                   ? 'bg-lime-400/10 text-lime-400'
                   : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800'
