@@ -165,6 +165,17 @@ export async function getMatchNotes(matchIds: number[]): Promise<Record<number, 
   }
 }
 
+export async function getAllMatchNotes(): Promise<MatchNote[]> {
+  try {
+    const url = `${scriptUrl()}?action=getAllMatchNotes`;
+    const res = await fetch(url, { cache: 'no-store' });
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function saveMatchNote(note: MatchNote): Promise<void> {
   await fetch(scriptUrl(), {
     method: 'POST',

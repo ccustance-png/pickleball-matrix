@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 const links = [
   { href: '/', label: 'Home' },
   { href: '/submit', label: 'Log Match' },
+  { href: '/activities', label: 'Activities' },
   { href: '/players', label: 'Players' },
   { href: '/rivalries', label: 'Rivalries' },
 ];
