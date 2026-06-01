@@ -135,7 +135,7 @@ export default async function HomePage() {
         href="/submit"
         className="block w-full py-3 bg-lime-500 hover:bg-lime-400 text-slate-900 font-bold rounded-lg text-sm transition-colors text-center"
       >
-        + Log a Match
+        + Log Session
       </Link>
 
       {/* Nail Biters */}
