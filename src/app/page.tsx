@@ -70,7 +70,7 @@ export default async function HomePage() {
   const hotDoubles = computeHotPlayers(matches, 'DOUBLES');
 
   // Last 10 matches, most recent first
-  const recentMatches = [...matches].reverse().slice(0, 10);
+  const recentMatches = [...matches].reverse().slice(0, 5);
 
   // Compute W/L records per player for singles and doubles
   const singlesWL: Record<string, { wins: number; losses: number }> = {};
