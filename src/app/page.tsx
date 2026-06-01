@@ -91,14 +91,12 @@ export default async function HomePage() {
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
 
       {/* CTA */}
-      <div className="flex gap-3">
-        <Link
-          href="/submit"
-          className="px-5 py-2.5 bg-lime-500 hover:bg-lime-400 text-slate-900 font-bold rounded-lg text-sm transition-colors"
-        >
-          + Log a Match
-        </Link>
-      </div>
+      <Link
+        href="/submit"
+        className="block w-full py-3 bg-lime-500 hover:bg-lime-400 text-slate-900 font-bold rounded-lg text-sm transition-colors text-center"
+      >
+        + Log a Match
+      </Link>
 
       {/* Recent Matches */}
       {recentMatches.length > 0 && (
