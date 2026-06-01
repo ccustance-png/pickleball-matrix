@@ -86,14 +86,13 @@ export default function ProfileEditForm({ name, currentPhoto, currentBio }: Prop
             >
               {uploading ? 'Uploading…' : 'Choose Photo'}
             </button>
-            <p className="text-xs text-slate-500 mt-1.5">JPG, PNG, HEIC — tap to use camera on mobile</p>
+            <p className="text-xs text-slate-500 mt-1.5">JPG, PNG, HEIC — choose from camera roll or take a photo</p>
           </div>
         </div>
         <input
           ref={fileRef}
           type="file"
           accept="image/*"
-          capture="user"
           className="hidden"
           onChange={handleFileChange}
         />
