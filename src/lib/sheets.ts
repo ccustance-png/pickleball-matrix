@@ -176,6 +176,36 @@ export async function getAllMatchNotes(): Promise<MatchNote[]> {
   }
 }
 
+export type DinkEntry = {
+  matchId: number;
+  userEmail: string;
+  userName: string;
+  timestamp: string;
+};
+
+export async function getMatchDinks(matchId: number): Promise<DinkEntry[]> {
+  try {
+    const url = `${scriptUrl()}?action=getDinks&matchId=${matchId}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function toggleMatchDink(
+  matchId: number,
+  userEmail: string,
+  userName: string
+): Promise<{ dinked: boolean }> {
+  const res = await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'toggleDink', matchId, userEmail, userName }),
+  });
+  return res.json();
+}
+
 export async function deleteMatch(matchId: number): Promise<void> {
   await fetch(scriptUrl(), {
     method: 'POST',
