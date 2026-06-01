@@ -132,6 +132,13 @@ function WinBar({ pct, name1, name2, elo1, elo2 }: {
   );
 }
 
+// ── Date formatter ─────────────────────────────────────────────────────────────
+function fmtDate(s: string) {
+  try {
+    return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch { return s; }
+}
+
 // ── Player combobox (simple inline version) ────────────────────────────────────
 function PlayerSelect({ value, onChange, players, placeholder }: {
   value: string; onChange: (v: string) => void; players: string[]; placeholder?: string;
@@ -225,30 +232,31 @@ export default function StatsTabs({ matches, singlesElo, doublesElo, players }: 
     const eloMap = (predType === 'SINGLES' ? singlesElo : doublesElo)
       .reduce<Record<string, number>>((acc, e) => { acc[e.name.toUpperCase()] = e.elo; return acc; }, {});
 
+    type LastMatch = { date: string; p1Score: number; p2Score: number; p1Won: boolean };
+
+    // ── Branch: resolve ELO + h2h matches ─────────────────────────────────
+    let pct: number, e1: number, e2: number;
+    let h2hRaw: MatchRow[] = [];
+
     if (predType === 'SINGLES') {
       if (!predP1 || !predP2) return null;
-      const e1 = eloMap[predP1.toUpperCase()] ?? 1000;
-      const e2 = eloMap[predP2.toUpperCase()] ?? 1000;
-      const pct = expWin(e1, e2);
-
-      // Head-to-head
-      const h2h = matches.filter(m => {
+      e1 = eloMap[predP1.toUpperCase()] ?? 1000;
+      e2 = eloMap[predP2.toUpperCase()] ?? 1000;
+      pct = expWin(e1, e2);
+      h2hRaw = matches.filter(m => {
         if (m.type !== 'SINGLES') return false;
         const all = m.players.toUpperCase();
         return all.includes(predP1.toUpperCase()) && all.includes(predP2.toUpperCase());
       });
-      const p1wins = h2h.filter(m => m.win.toUpperCase().includes(predP1.toUpperCase())).length;
-
-      return { pct, e1, e2, h2h: h2h.length, p1wins };
     } else {
       const t1 = [predP1, predT1p2].filter(Boolean);
       const t2 = [predP2, predT2p2].filter(Boolean);
       if (t1.length < 2 || t2.length < 2) return null;
       const avg1 = t1.reduce((s, p) => s + (eloMap[p.toUpperCase()] ?? 1000), 0) / t1.length;
       const avg2 = t2.reduce((s, p) => s + (eloMap[p.toUpperCase()] ?? 1000), 0) / t2.length;
-      const pct = expWin(avg1, avg2);
-
-      const h2h = matches.filter(m => {
+      e1 = Math.round(avg1); e2 = Math.round(avg2);
+      pct = expWin(avg1, avg2);
+      h2hRaw = matches.filter(m => {
         if (m.type !== 'DOUBLES') return false;
         const t1Names = t1.map(p => p.toUpperCase());
         const t2Names = t2.map(p => p.toUpperCase());
@@ -257,11 +265,124 @@ export default function StatsTabs({ matches, singlesElo, doublesElo, players }: 
         return (t1Names.every(p => team1.includes(p)) && t2Names.every(p => team2.includes(p))) ||
                (t2Names.every(p => team1.includes(p)) && t1Names.every(p => team2.includes(p)));
       });
-      const t1Label = t1.join('/');
-      const p1wins = h2h.filter(m => t1.some(p => m.win.toUpperCase().includes(p.toUpperCase()))).length;
-
-      return { pct, e1: Math.round(avg1), e2: Math.round(avg2), h2h: h2h.length, p1wins, t1Label };
     }
+
+    // ── H2H stats ──────────────────────────────────────────────────────────
+    const p1wins = h2hRaw.filter(m => m.win.toUpperCase().includes(predP1.toUpperCase())).length;
+    let p1TotalPts = 0, p2TotalPts = 0;
+    h2hRaw.forEach(m => {
+      const p1isT1 = m.team1.toUpperCase().includes(predP1.toUpperCase());
+      p1TotalPts += p1isT1 ? m.team1Score : m.team2Score;
+      p2TotalPts += p1isT1 ? m.team2Score : m.team1Score;
+    });
+    let lastMatch: LastMatch | null = null;
+    if (h2hRaw.length > 0) {
+      const last = h2hRaw[h2hRaw.length - 1];
+      const p1isT1 = last.team1.toUpperCase().includes(predP1.toUpperCase());
+      lastMatch = {
+        date: last.date,
+        p1Score: p1isT1 ? last.team1Score : last.team2Score,
+        p2Score: p1isT1 ? last.team2Score : last.team1Score,
+        p1Won: last.win.toUpperCase().includes(predP1.toUpperCase()),
+      };
+    }
+
+    // ── Score prediction ───────────────────────────────────────────────────
+    const p1Favoured = pct >= 0.5;
+    const favWinPct = Math.max(pct, 1 - pct);
+    const favKey = p1Favoured ? predP1 : predP2;
+    const favWins = h2hRaw.filter(m => m.win.toUpperCase().includes(favKey.toUpperCase()));
+    let scorePred: { p1: number; p2: number };
+    if (favWins.length >= 2) {
+      let fSum = 0, dSum = 0;
+      favWins.forEach(m => {
+        const fIsT1 = m.team1.toUpperCase().includes(favKey.toUpperCase());
+        fSum += fIsT1 ? m.team1Score : m.team2Score;
+        dSum += fIsT1 ? m.team2Score : m.team1Score;
+      });
+      const fa = Math.round(fSum / favWins.length);
+      const da = Math.round(dSum / favWins.length);
+      scorePred = p1Favoured ? { p1: fa, p2: da } : { p1: da, p2: fa };
+    } else {
+      const loser = Math.max(0, Math.round(11 * (1 - favWinPct) / favWinPct * 0.85));
+      scorePred = p1Favoured ? { p1: 11, p2: loser } : { p1: loser, p2: 11 };
+    }
+
+    // ── Recent form per player ─────────────────────────────────────────────
+    const playerMs = (name: string) => matches.filter(m =>
+      m.type === predType &&
+      m.bracket.toUpperCase() !== 'CASUAL' &&
+      m.players.toUpperCase().split('/').map((p: string) => p.trim()).includes(name.toUpperCase())
+    );
+    const getStrk = (name: string, ms: MatchRow[]) => {
+      let count = 0, type: 'W' | 'L' | null = null;
+      for (let i = ms.length - 1; i >= 0; i--) {
+        const w = ms[i].win.toUpperCase().includes(name.toUpperCase());
+        if (!type) { type = w ? 'W' : 'L'; count = 1; }
+        else if ((type === 'W') === w) count++;
+        else break;
+      }
+      return { count, type };
+    };
+    const p1AllM = playerMs(predP1);
+    const p2AllM = playerMs(predP2);
+    const p1Strk = getStrk(predP1, p1AllM);
+    const p2Strk = getStrk(predP2, p2AllM);
+    const p1R5   = p1AllM.slice(-5);
+    const p2R5   = p2AllM.slice(-5);
+    const p1RW   = p1R5.filter(m => m.win.toUpperCase().includes(predP1.toUpperCase())).length;
+    const p2RW   = p2R5.filter(m => m.win.toUpperCase().includes(predP2.toUpperCase())).length;
+
+    // ── Analysis text ──────────────────────────────────────────────────────
+    const eloDiff  = Math.abs(e1 - e2);
+    const p1Label  = predType === 'DOUBLES' ? `${predP1}/${predT1p2}` : predP1;
+    const p2Label  = predType === 'DOUBLES' ? `${predP2}/${predT2p2}` : predP2;
+    const favLabel = p1Favoured ? p1Label : p2Label;
+    const dogLabel = p1Favoured ? p2Label : p1Label;
+    const favPctN  = Math.round(favWinPct * 100);
+    const favStrk  = p1Favoured ? p1Strk : p2Strk;
+    const dogStrk  = p1Favoured ? p2Strk : p1Strk;
+    const favRW    = p1Favoured ? p1RW : p2RW;
+    const favR5    = p1Favoured ? p1R5 : p2R5;
+    const dogRW    = p1Favoured ? p2RW : p1RW;
+    const dogR5    = p1Favoured ? p2R5 : p1R5;
+
+    let s1: string, s2: string;
+    if (eloDiff < 50) {
+      s1 = `${favLabel} holds a razor-thin ELO edge (${e1} vs ${e2}) — this is essentially a coin flip where either player can take it.`;
+    } else if (eloDiff < 150) {
+      s1 = `${favLabel} enters as the moderate favourite with a ${eloDiff}-point ELO advantage, translating to a ${favPctN}% win probability.`;
+    } else {
+      s1 = `${favLabel} carries a commanding ${eloDiff}-point ELO lead over ${dogLabel}, making them a strong ${favPctN}% favourite on paper.`;
+    }
+
+    if (favStrk.type === 'W' && favStrk.count >= 3) {
+      s2 = `${favLabel} is locked in on a ${favStrk.count}-match winning streak, making them an even stronger lock here.`;
+    } else if (dogStrk.type === 'W' && dogStrk.count >= 3) {
+      s2 = `${dogLabel} is red hot though — riding a ${dogStrk.count}-win streak, an upset absolutely cannot be ruled out.`;
+    } else if (h2hRaw.length > 0) {
+      const favH2h = p1Favoured ? p1wins : (h2hRaw.length - p1wins);
+      const dogH2h = h2hRaw.length - favH2h;
+      if (favH2h > dogH2h) {
+        s2 = `History backs the pick — ${favLabel} leads their head-to-head ${favH2h}–${dogH2h}, showing they know how to get it done against this opponent.`;
+      } else if (dogH2h > favH2h) {
+        s2 = `Despite the rating gap, ${dogLabel} leads the head-to-head ${dogH2h}–${favH2h} — history says this matchup is closer than the numbers suggest.`;
+      } else {
+        s2 = `Their head-to-head is perfectly even, so it'll come down to whoever is sharper on the day.`;
+      }
+    } else if (favR5.length > 0 && favRW / favR5.length >= 0.8) {
+      s2 = `${favLabel} has been in excellent form lately (${favRW}–${favR5.length - favRW} last ${favR5.length}), cementing them as the pick.`;
+    } else if (dogR5.length > 0 && dogRW / dogR5.length >= 0.8) {
+      s2 = `${dogLabel} has been playing their best ball recently (${dogRW}–${dogR5.length - dogRW} last ${dogR5.length}), making this more interesting than the rating gap suggests.`;
+    } else {
+      s2 = `No head-to-head history to draw from, so the ELO gap is the best guide — trust the numbers and back ${favLabel}.`;
+    }
+
+    return {
+      pct, e1, e2, h2h: h2hRaw.length, p1wins,
+      p1TotalPts, p2TotalPts, lastMatch,
+      scorePred, analysis: `${s1} ${s2}`,
+    };
   }, [predType, predP1, predP2, predT1p2, predT2p2, matches, singlesElo, doublesElo]);
 
   const pctFmt = (w: number, total: number) =>
@@ -497,6 +618,7 @@ export default function StatsTabs({ matches, singlesElo, doublesElo, players }: 
           {/* Prediction result */}
           {prediction && (
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-5">
+              {/* Win probability bar */}
               <WinBar
                 pct={prediction.pct}
                 name1={predType === 'SINGLES' ? predP1 : `${predP1} / ${predT1p2}`}
@@ -505,36 +627,82 @@ export default function StatsTabs({ matches, singlesElo, doublesElo, players }: 
                 elo2={prediction.e2}
               />
 
-              {/* Verdict */}
-              <div className={`rounded-lg px-4 py-3 text-sm font-semibold text-center ${
-                prediction.pct > 0.6 ? 'bg-lime-500/10 text-lime-400 border border-lime-500/20'
-                : prediction.pct < 0.4 ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                : 'bg-slate-800 text-slate-300 border border-slate-700'
-              }`}>
-                {prediction.pct > 0.65
-                  ? `${predP1} is the heavy favourite`
-                  : prediction.pct > 0.55
-                  ? `${predP1} has the edge`
-                  : prediction.pct < 0.35
-                  ? `${predP2} is the heavy favourite`
-                  : prediction.pct < 0.45
-                  ? `${predP2} has the edge`
-                  : "Too close to call — anyone's game"}
+              {/* Predicted Score */}
+              <div className="border-t border-slate-800 pt-5">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 text-center">Predicted Score</p>
+                <div className="flex items-center justify-center gap-6">
+                  <div className="text-center min-w-0">
+                    <p className={`text-6xl font-black tabular-nums ${prediction.scorePred.p1 > prediction.scorePred.p2 ? 'text-lime-400' : 'text-slate-500'}`}>
+                      {prediction.scorePred.p1}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2 truncate max-w-[96px]">
+                      {predType === 'SINGLES' ? predP1 : predP1}
+                    </p>
+                  </div>
+                  <span className="text-slate-700 font-black text-4xl shrink-0 pb-5">–</span>
+                  <div className="text-center min-w-0">
+                    <p className={`text-6xl font-black tabular-nums ${prediction.scorePred.p2 > prediction.scorePred.p1 ? 'text-lime-400' : 'text-slate-500'}`}>
+                      {prediction.scorePred.p2}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2 truncate max-w-[96px]">
+                      {predType === 'SINGLES' ? predP2 : predP2}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Analysis */}
+              <div className="border-t border-slate-800 pt-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Analysis</p>
+                <p className="text-sm text-slate-300 leading-relaxed">{prediction.analysis}</p>
               </div>
 
               {/* Head-to-head */}
               {prediction.h2h > 0 && (
-                <div className="border-t border-slate-800 pt-4">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Head-to-head</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-lime-400">{prediction.p1wins}W</span>
-                    <span className="text-xs text-slate-500">{prediction.h2h} match{prediction.h2h !== 1 ? 'es' : ''} played</span>
-                    <span className="text-sm font-bold text-slate-400">{prediction.h2h - prediction.p1wins}W</span>
-                  </div>
-                  <div className="flex h-2 rounded-full overflow-hidden mt-2 bg-slate-800">
+                <div className="border-t border-slate-800 pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Head-to-head</p>
+
+                  {/* Stat rows */}
+                  {[
+                    {
+                      label: 'Record',
+                      p1val: `${prediction.p1wins}–${prediction.h2h - prediction.p1wins}`,
+                      p2val: `${prediction.h2h - prediction.p1wins}–${prediction.p1wins}`,
+                    },
+                    {
+                      label: 'Points For',
+                      p1val: `${prediction.p1TotalPts}`,
+                      p2val: `${prediction.p2TotalPts}`,
+                    },
+                  ].map(({ label, p1val, p2val }) => (
+                    <div key={label} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                      <span className="text-sm font-bold text-lime-400">{p1val}</span>
+                      <span className="text-xs text-slate-600 font-semibold uppercase tracking-wider text-center w-20">{label}</span>
+                      <span className="text-sm font-bold text-slate-400 text-right">{p2val}</span>
+                    </div>
+                  ))}
+
+                  {/* Win bar */}
+                  <div className="flex h-2 rounded-full overflow-hidden bg-slate-800">
                     <div className="bg-lime-500 transition-all duration-500"
                       style={{ width: `${(prediction.p1wins / prediction.h2h) * 100}%` }} />
                   </div>
+
+                  {/* Last match */}
+                  {prediction.lastMatch && (
+                    <div className="bg-slate-800/60 rounded-lg px-4 py-3 flex items-center justify-between">
+                      <span className={`text-2xl font-black tabular-nums ${prediction.lastMatch.p1Won ? 'text-lime-400' : 'text-slate-500'}`}>
+                        {prediction.lastMatch.p1Score}
+                      </span>
+                      <div className="text-center">
+                        <p className="text-xs font-semibold text-slate-500">Last match</p>
+                        <p className="text-xs text-slate-600 mt-0.5">{fmtDate(prediction.lastMatch.date)}</p>
+                      </div>
+                      <span className={`text-2xl font-black tabular-nums ${!prediction.lastMatch.p1Won ? 'text-lime-400' : 'text-slate-500'}`}>
+                        {prediction.lastMatch.p2Score}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
