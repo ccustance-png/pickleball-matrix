@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getAllMatches, getEloRankings, type MatchRow } from '@/lib/sheets';
 import EloTabs from '@/components/EloTabs';
+import HotRightNow from '@/components/HotRightNow';
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
@@ -12,7 +13,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 }
 
 // Replay ELO math to find biggest gainers over the last 14 days
-function computeHotPlayers(matches: MatchRow[]) {
+function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
   const K = 32;
   const DAYS = 14;
 
@@ -26,30 +27,35 @@ function computeHotPlayers(matches: MatchRow[]) {
   }
 
   const cutoff = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000);
-  const singlesMatches = matches.filter((m) => m.type === 'SINGLES');
+  const filtered = matches.filter((m) => m.type === type);
 
   const elo: Record<string, number> = {};
   const eloAtCutoff: Record<string, number> = {};
 
-  for (const m of singlesMatches) {
-    const p1 = m.team1.trim().toUpperCase();
-    const p2 = m.team2.trim().toUpperCase();
-    if (!p1 || !p2) continue;
+  for (const m of filtered) {
+    const team1Players = m.team1.trim().toUpperCase().split('/').map((p) => p.trim()).filter(Boolean);
+    const team2Players = m.team2.trim().toUpperCase().split('/').map((p) => p.trim()).filter(Boolean);
+    if (!team1Players.length || !team2Players.length) continue;
 
-    if (elo[p1] === undefined) elo[p1] = 1000;
-    if (elo[p2] === undefined) elo[p2] = 1000;
+    // Initialise ELO for all players
+    [...team1Players, ...team2Players].forEach((p) => { if (elo[p] === undefined) elo[p] = 1000; });
 
-    // Snapshot ELO the first time we see each player in a recent match
     const matchDate = parseDate(m.date);
-    if (matchDate >= cutoff) {
-      if (eloAtCutoff[p1] === undefined) eloAtCutoff[p1] = elo[p1];
-      if (eloAtCutoff[p2] === undefined) eloAtCutoff[p2] = elo[p2];
+    const isRecent = matchDate >= cutoff;
+
+    if (isRecent) {
+      [...team1Players, ...team2Players].forEach((p) => {
+        if (eloAtCutoff[p] === undefined) eloAtCutoff[p] = elo[p];
+      });
     }
 
-    const exp1 = expected(elo[p1], elo[p2]);
-    const win1 = m.win.trim().toUpperCase() === p1 ? 1 : 0;
-    elo[p1] += K * (win1 - exp1);
-    elo[p2] += K * ((1 - win1) - (1 - exp1));
+    const avg1 = team1Players.reduce((s, p) => s + elo[p], 0) / team1Players.length;
+    const avg2 = team2Players.reduce((s, p) => s + elo[p], 0) / team2Players.length;
+    const exp1 = expected(avg1, avg2);
+    const win1 = m.win.trim().toUpperCase() === m.team1.trim().toUpperCase() ? 1 : 0;
+
+    team1Players.forEach((p) => { elo[p] += K * (win1 - exp1); });
+    team2Players.forEach((p) => { elo[p] += K * ((1 - win1) - (1 - exp1)); });
   }
 
   return Object.entries(eloAtCutoff)
@@ -76,7 +82,8 @@ export default async function HomePage() {
   const today = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
   const todayMatches = matches.filter((m) => m.date === today).length;
 
-  const hotPlayers = computeHotPlayers(matches);
+  const hotSingles = computeHotPlayers(matches, 'SINGLES');
+  const hotDoubles = computeHotPlayers(matches, 'DOUBLES');
 
   // Compute W/L records per player for singles and doubles
   const singlesWL: Record<string, { wins: number; losses: number }> = {};
@@ -114,42 +121,7 @@ export default async function HomePage() {
       </div>
 
       {/* Hot Right Now */}
-      {hotPlayers.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold text-slate-200 mb-4">
-            🔥 Hot Right Now
-            <span className="ml-2 text-xs font-normal text-slate-500">Biggest ELO gainers · last 14 days</span>
-          </h2>
-          <div className="rounded-xl border border-slate-800 overflow-hidden">
-            <table className="w-full text-sm">
-              <tbody className="divide-y divide-slate-800">
-                {hotPlayers.map((p, i) => (
-                  <tr key={p.name} className="bg-slate-950 hover:bg-slate-900 transition-colors">
-                    <td className="px-4 py-3 text-slate-500 font-mono text-xs w-6">{i + 1}</td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/players/${encodeURIComponent(p.name)}`}
-                        className="font-semibold text-slate-100 hover:text-lime-400 transition-colors"
-                      >
-                        {p.name}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-400">{p.currentElo}</td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-lime-400">
-                      +{p.change}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-lime-500/15 text-lime-400 text-xs font-bold">
-                        ↑{p.pct}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <HotRightNow singles={hotSingles} doubles={hotDoubles} />
 
       {/* ELO Rankings */}
       <EloTabs singles={elo.singles} doubles={elo.doubles} singlesWL={singlesWL} doublesWL={doublesWL} />
