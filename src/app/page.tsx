@@ -3,15 +3,6 @@ import { getAllMatches, getEloRankings, type MatchRow } from '@/lib/sheets';
 import EloTabs from '@/components/EloTabs';
 import HotRightNow from '@/components/HotRightNow';
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-3xl font-bold text-slate-100">{value}</p>
-    </div>
-  );
-}
-
 // Replay ELO math to find biggest gainers over the last 14 days
 function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
   const K = 32;
@@ -37,13 +28,10 @@ function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
     const team2Players = m.team2.trim().toUpperCase().split('/').map((p) => p.trim()).filter(Boolean);
     if (!team1Players.length || !team2Players.length) continue;
 
-    // Initialise ELO for all players
     [...team1Players, ...team2Players].forEach((p) => { if (elo[p] === undefined) elo[p] = 1000; });
 
     const matchDate = parseDate(m.date);
-    const isRecent = matchDate >= cutoff;
-
-    if (isRecent) {
+    if (matchDate >= cutoff) {
       [...team1Players, ...team2Players].forEach((p) => {
         if (eloAtCutoff[p] === undefined) eloAtCutoff[p] = elo[p];
       });
@@ -78,12 +66,11 @@ export default async function HomePage() {
     getEloRankings().catch(() => ({ singles: [], doubles: [] })),
   ]);
 
-  const uniquePlayers = new Set(matches.flatMap((m) => m.players.split('/').map((p) => p.trim())));
-  const today = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
-  const todayMatches = matches.filter((m) => m.date === today).length;
-
   const hotSingles = computeHotPlayers(matches, 'SINGLES');
   const hotDoubles = computeHotPlayers(matches, 'DOUBLES');
+
+  // Last 10 matches, most recent first
+  const recentMatches = [...matches].reverse().slice(0, 10);
 
   // Compute W/L records per player for singles and doubles
   const singlesWL: Record<string, { wins: number; losses: number }> = {};
@@ -102,13 +89,6 @@ export default async function HomePage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Total Matches" value={matches.length} />
-        <StatCard label="Players" value={uniquePlayers.size} />
-        <StatCard label="Today" value={todayMatches} />
-        <StatCard label="Latest ID" value={matches.length > 0 ? Math.max(...matches.map((m) => m.matchId)) : '—'} />
-      </div>
 
       {/* CTA */}
       <div className="flex gap-3">
@@ -119,6 +99,67 @@ export default async function HomePage() {
           + Log a Match
         </Link>
       </div>
+
+      {/* Recent Matches */}
+      {recentMatches.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-slate-200 mb-4">Recent Matches</h2>
+          <div className="rounded-xl border border-slate-800 overflow-hidden">
+            {recentMatches.map((m) => {
+              const scoreDiff = Math.abs(m.team1Score - m.team2Score);
+              const isClose = scoreDiff <= 2 && (m.team1Score > 0 || m.team2Score > 0);
+              const team1Won = m.win.trim().toUpperCase() === m.team1.trim().toUpperCase();
+
+              return (
+                <div key={m.matchId} className="flex items-center gap-3 px-4 py-3 border-b border-slate-800 last:border-0 bg-slate-950 hover:bg-slate-900 transition-colors">
+                  {/* Date + type */}
+                  <div className="shrink-0 text-right w-16">
+                    <p className="text-xs text-slate-500">{m.date}</p>
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                      m.type === 'SINGLES' ? 'bg-slate-800 text-slate-400' : 'bg-slate-700 text-slate-300'
+                    }`}>
+                      {m.type === 'SINGLES' ? 'S' : 'D'}
+                    </span>
+                  </div>
+
+                  {/* Winner */}
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/players/${encodeURIComponent(m.win.split('/')[0].trim())}`}
+                      className="text-sm font-bold text-lime-400 hover:text-lime-300 transition-colors truncate block"
+                    >
+                      {m.win}
+                    </Link>
+                    <p className="text-xs text-slate-500 truncate">{m.loss}</p>
+                  </div>
+
+                  {/* Score */}
+                  <div className="shrink-0 text-right">
+                    <p className="font-mono text-sm font-bold">
+                      <span className="text-lime-400">
+                        {team1Won ? m.team1Score : m.team2Score}
+                      </span>
+                      <span className="text-slate-600 mx-1">–</span>
+                      <span className="text-slate-400">
+                        {team1Won ? m.team2Score : m.team1Score}
+                      </span>
+                    </p>
+                  </div>
+
+                  {/* Close badge */}
+                  <div className="shrink-0 w-12 text-right">
+                    {isClose && (
+                      <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400">
+                        Close
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Hot Right Now */}
       <HotRightNow singles={hotSingles} doubles={hotDoubles} />
