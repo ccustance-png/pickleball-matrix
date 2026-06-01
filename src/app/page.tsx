@@ -69,8 +69,14 @@ export default async function HomePage() {
   const hotSingles = computeHotPlayers(matches, 'SINGLES');
   const hotDoubles = computeHotPlayers(matches, 'DOUBLES');
 
-  // Last 10 matches, most recent first
-  const recentMatches = [...matches].reverse().slice(0, 5);
+  // Most recent close matches (decided by 2 pts or less), up to 5
+  const nailBiters = [...matches]
+    .reverse()
+    .filter((m) => {
+      const diff = Math.abs(m.team1Score - m.team2Score);
+      return diff <= 2 && (m.team1Score > 0 || m.team2Score > 0);
+    })
+    .slice(0, 5);
 
   // Compute W/L records per player for singles and doubles
   const singlesWL: Record<string, { wins: number; losses: number }> = {};
@@ -98,14 +104,13 @@ export default async function HomePage() {
         + Log a Match
       </Link>
 
-      {/* Recent Matches */}
-      {recentMatches.length > 0 && (
+      {/* Nail Biters */}
+      {nailBiters.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-slate-200 mb-4">Recent Matches</h2>
+          <h2 className="text-lg font-semibold text-slate-200 mb-1">🫀 Nail Biters</h2>
+          <p className="text-xs text-slate-500 mb-4">Most recent matches decided by 2 points or less</p>
           <div className="rounded-xl border border-slate-800 overflow-hidden">
-            {recentMatches.map((m) => {
-              const scoreDiff = Math.abs(m.team1Score - m.team2Score);
-              const isClose = scoreDiff <= 2 && (m.team1Score > 0 || m.team2Score > 0);
+            {nailBiters.map((m) => {
               const team1Won = m.win.trim().toUpperCase() === m.team1.trim().toUpperCase();
 
               return (
@@ -144,14 +149,6 @@ export default async function HomePage() {
                     </p>
                   </div>
 
-                  {/* Close badge */}
-                  <div className="shrink-0 w-12 text-right">
-                    {isClose && (
-                      <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400">
-                        Close
-                      </span>
-                    )}
-                  </div>
                 </div>
               );
             })}
