@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { getAllMatches, getTabRows, tabToObjects, getProfile, getEloRankings, type MatchRow } from '@/lib/sheets';
+import ClaimButton from '@/components/ClaimButton';
 
 export const revalidate = 15;
 
@@ -95,13 +98,17 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
   const { name: rawName } = await params;
   const name = decodeURIComponent(rawName).toUpperCase();
 
-  const [matches, singlesRows, doublesRows, eloRankings, profile] = await Promise.all([
+  const [matches, singlesRows, doublesRows, eloRankings, profile, session] = await Promise.all([
     getAllMatches().catch(() => []),
     getTabRows('SINGLES').catch(() => []),
     getTabRows('DOUBLES').catch(() => []),
     getEloRankings().catch(() => ({ singles: [], doubles: [] })),
     getProfile(name),
+    getServerSession(authOptions),
   ]);
+
+  const isClaimed = !!profile?.googleEmail;
+  const isOwner = !!session?.user?.email && session.user.email === profile?.googleEmail;
 
   const playerMatches = matches.filter((m) =>
     m.players.split('/').map((p) => p.trim()).includes(name)
@@ -143,12 +150,22 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-3xl font-bold text-slate-100">{name}</h1>
-            <Link
-              href={`/players/${encodeURIComponent(name)}/edit`}
-              className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-slate-200 rounded-full transition-colors"
-            >
-              Edit Profile
-            </Link>
+            {isClaimed && (
+              <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-lime-500/15 text-lime-400 font-semibold">
+                ✓ Verified
+              </span>
+            )}
+            {isOwner && (
+              <Link
+                href={`/players/${encodeURIComponent(name)}/edit`}
+                className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-slate-200 rounded-full transition-colors"
+              >
+                Edit Profile
+              </Link>
+            )}
+            {!isClaimed && (
+              <ClaimButton name={name} signedIn={!!session} />
+            )}
           </div>
           {profile?.bio && (
             <p className="text-slate-400 text-sm mt-1">{profile.bio}</p>

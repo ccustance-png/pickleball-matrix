@@ -72,7 +72,7 @@ export async function getTabRows(tabName: string): Promise<string[][]> {
   }
 }
 
-export type PlayerProfile = { player: string; photoUrl: string; bio: string };
+export type PlayerProfile = { player: string; photoUrl: string; bio: string; googleEmail: string };
 
 export async function getProfile(name: string): Promise<PlayerProfile | null> {
   try {
