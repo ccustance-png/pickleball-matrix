@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 
 const links = [
   { href: '/', label: 'Home' },
-  { href: '/submit', label: 'Log Match' },
+  { href: '/submit', label: 'Log Session' },
   { href: '/activities', label: 'Activities' },
   { href: '/players', label: 'Power Rankings' },
   { href: '/rivalries', label: 'Rivalries' },
