@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { getAllMatches, getTabRows, tabToObjects, getProfile, type MatchRow } from '@/lib/sheets';
+import { getAllMatches, getTabRows, tabToObjects, getProfile, getEloRankings, type MatchRow } from '@/lib/sheets';
 
 export const revalidate = 60;
 
@@ -95,11 +95,11 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
   const { name: rawName } = await params;
   const name = decodeURIComponent(rawName).toUpperCase();
 
-  const [matches, singlesRows, doublesRows, eloRows, profile] = await Promise.all([
+  const [matches, singlesRows, doublesRows, eloRankings, profile] = await Promise.all([
     getAllMatches().catch(() => []),
     getTabRows('SINGLES').catch(() => []),
     getTabRows('DOUBLES').catch(() => []),
-    getTabRows('ELO').catch(() => []),
+    getEloRankings().catch(() => ({ singles: [], doubles: [] })),
     getProfile(name),
   ]);
 
@@ -124,7 +124,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
 
   const singlesStats = findPlayerStats(singlesRows);
   const doublesStats = findPlayerStats(doublesRows);
-  const eloStats = findPlayerStats(eloRows);
+  const singlesElo = eloRankings.singles.find((e) => e.name.toUpperCase() === name)?.elo ?? null;
+  const doublesElo = eloRankings.doubles.find((e) => e.name.toUpperCase() === name)?.elo ?? null;
 
   const recentMatches = [...playerMatches].reverse().slice(0, 15);
 
@@ -162,10 +163,23 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
       </div>
 
       {/* ELO */}
-      {eloStats && (
+      {(singlesElo !== null || doublesElo !== null) && (
         <div>
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">ELO / Ratings</h2>
-          <StatsGrid data={eloStats} />
+          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {singlesElo !== null && (
+              <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
+                <dt className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Singles ELO</dt>
+                <dd className="text-lime-400 font-bold font-mono text-lg">{singlesElo}</dd>
+              </div>
+            )}
+            {doublesElo !== null && (
+              <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
+                <dt className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Doubles ELO</dt>
+                <dd className="text-lime-400 font-bold font-mono text-lg">{doublesElo}</dd>
+              </div>
+            )}
+          </dl>
         </div>
       )}
 
