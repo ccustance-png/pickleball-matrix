@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getAllMatches, getEloRankings, type MatchRow } from '@/lib/sheets';
-import PowerRankings from '@/components/PowerRankings';
+import EloTabs from '@/components/EloTabs';
 import HotRightNow from '@/components/HotRightNow';
 
 // Replay ELO math to find biggest gainers over the last 14 days
@@ -193,14 +193,8 @@ export default async function HomePage() {
       {/* Hot Right Now */}
       <HotRightNow singles={hotSingles} doubles={hotDoubles} />
 
-      {/* Power Rankings */}
-      <PowerRankings
-        matches={matches}
-        singlesElo={elo.singles}
-        doublesElo={elo.doubles}
-        singlesWL={singlesWL}
-        doublesWL={doublesWL}
-      />
+      {/* ELO Rankings */}
+      <EloTabs singles={elo.singles} doubles={elo.doubles} singlesWL={singlesWL} doublesWL={doublesWL} />
     </div>
   );
 }
