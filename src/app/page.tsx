@@ -23,6 +23,21 @@ export default async function HomePage() {
   const today = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
   const todayMatches = matches.filter((m) => m.date === today).length;
 
+  // Compute W/L records per player for singles and doubles
+  const singlesWL: Record<string, { wins: number; losses: number }> = {};
+  const doublesWL: Record<string, { wins: number; losses: number }> = {};
+
+  for (const m of matches) {
+    const map = m.type === 'SINGLES' ? singlesWL : doublesWL;
+    const allPlayers = m.players.split('/').map((p) => p.trim()).filter(Boolean);
+    const winPlayers = m.win.split('/').map((p) => p.trim());
+    for (const player of allPlayers) {
+      if (!map[player]) map[player] = { wins: 0, losses: 0 };
+      if (winPlayers.includes(player)) map[player].wins++;
+      else map[player].losses++;
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
       {/* Stats row */}
@@ -41,16 +56,10 @@ export default async function HomePage() {
         >
           + Log a Match
         </Link>
-        <Link
-          href="/players"
-          className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg text-sm transition-colors"
-        >
-          Player Rankings
-        </Link>
       </div>
 
       {/* ELO Rankings */}
-      <EloTabs singles={elo.singles} doubles={elo.doubles} />
+      <EloTabs singles={elo.singles} doubles={elo.doubles} singlesWL={singlesWL} doublesWL={doublesWL} />
     </div>
   );
 }

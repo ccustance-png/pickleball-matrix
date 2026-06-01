@@ -4,7 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import type { EloEntry } from '@/lib/sheets';
 
-function EloTable({ players }: { players: EloEntry[] }) {
+type WLRecord = { wins: number; losses: number };
+type WLMap = Record<string, WLRecord>;
+
+function EloTable({ players, wlMap }: { players: EloEntry[]; wlMap: WLMap }) {
   if (players.length === 0) return <p className="text-slate-500 text-sm py-4">No ELO data yet.</p>;
   const max = players[0].elo;
   const min = Math.min(...players.map((p) => p.elo));
@@ -18,12 +21,14 @@ function EloTable({ players }: { players: EloEntry[] }) {
             <th className="px-4 py-3 text-left w-8">Rank</th>
             <th className="px-4 py-3 text-left">Player</th>
             <th className="px-4 py-3 text-right">ELO</th>
-            <th className="px-4 py-3 text-left min-w-[140px]"></th>
+            <th className="px-4 py-3 text-center">W-L</th>
+            <th className="px-4 py-3 text-left min-w-[100px]"></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-800">
           {players.map((p, i) => {
             const pct = Math.round(((p.elo - min) / range) * 100);
+            const record = wlMap[p.name] ?? { wins: 0, losses: 0 };
             return (
               <tr key={p.name} className="bg-slate-950 hover:bg-slate-900 transition-colors">
                 <td className="px-4 py-3 text-slate-500 font-mono text-xs">{i + 1}</td>
@@ -36,6 +41,11 @@ function EloTable({ players }: { players: EloEntry[] }) {
                   </Link>
                 </td>
                 <td className="px-4 py-3 text-right font-mono font-bold text-lime-400">{p.elo}</td>
+                <td className="px-4 py-3 text-center font-mono text-xs whitespace-nowrap">
+                  <span className="text-slate-300">{record.wins}</span>
+                  <span className="text-slate-600">–</span>
+                  <span className="text-slate-400">{record.losses}</span>
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -52,9 +62,14 @@ function EloTable({ players }: { players: EloEntry[] }) {
   );
 }
 
-type Props = { singles: EloEntry[]; doubles: EloEntry[] };
+type Props = {
+  singles: EloEntry[];
+  doubles: EloEntry[];
+  singlesWL: WLMap;
+  doublesWL: WLMap;
+};
 
-export default function EloTabs({ singles, doubles }: Props) {
+export default function EloTabs({ singles, doubles, singlesWL, doublesWL }: Props) {
   const [tab, setTab] = useState<'singles' | 'doubles'>('singles');
 
   return (
@@ -75,7 +90,10 @@ export default function EloTabs({ singles, doubles }: Props) {
           ))}
         </div>
       </div>
-      <EloTable players={tab === 'singles' ? singles : doubles} />
+      <EloTable
+        players={tab === 'singles' ? singles : doubles}
+        wlMap={tab === 'singles' ? singlesWL : doublesWL}
+      />
     </div>
   );
 }
