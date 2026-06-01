@@ -114,6 +114,45 @@ export async function getEloRankings(): Promise<{ singles: EloEntry[]; doubles: 
 
 export type MatchNote = { matchId: number; photoUrl: string; location: string; description: string };
 
+export type MatchComment = {
+  commentId: string;
+  matchId: number;
+  authorEmail: string;
+  authorName: string;
+  text: string;
+  timestamp: string;
+};
+
+export async function getMatchComments(matchId: number): Promise<MatchComment[]> {
+  try {
+    const url = `${scriptUrl()}?action=getMatchComments&matchId=${matchId}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function addMatchComment(
+  matchId: number,
+  authorEmail: string,
+  authorName: string,
+  text: string
+): Promise<void> {
+  await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'addMatchComment',
+      matchId,
+      authorEmail,
+      authorName,
+      text,
+      timestamp: new Date().toISOString(),
+    }),
+  });
+}
+
 export async function getMatchNotes(matchIds: number[]): Promise<Record<number, MatchNote>> {
   try {
     if (matchIds.length === 0) return {};

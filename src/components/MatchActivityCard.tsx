@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import type { MatchRow } from '@/lib/sheets';
-import type { MatchNote } from '@/lib/sheets';
+import type { MatchRow, MatchNote } from '@/lib/sheets';
+import MatchComments from './MatchComments';
 
 type Props = {
   match: MatchRow;
@@ -79,6 +79,9 @@ export default function MatchActivityCard({ match, name, note }: Props) {
           <p className="text-sm text-slate-300 leading-relaxed">{note.description}</p>
         )}
       </div>
+
+      {/* Comments */}
+      <MatchComments matchId={match.matchId} />
     </div>
   );
 }
