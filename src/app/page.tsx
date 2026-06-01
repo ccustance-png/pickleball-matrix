@@ -42,8 +42,14 @@ function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
     const exp1 = expected(avg1, avg2);
     const win1 = m.win.trim().toUpperCase() === m.team1.trim().toUpperCase() ? 1 : 0;
 
-    team1Players.forEach((p) => { elo[p] += K * (win1 - exp1); });
-    team2Players.forEach((p) => { elo[p] += K * ((1 - win1) - (1 - exp1)); });
+    team1Players.forEach((p) => {
+      const weight = avg1 > 0 ? elo[p] / avg1 : 1;
+      elo[p] += K * weight * (win1 - exp1);
+    });
+    team2Players.forEach((p) => {
+      const weight = avg2 > 0 ? elo[p] / avg2 : 1;
+      elo[p] += K * weight * ((1 - win1) - (1 - exp1));
+    });
   }
 
   return Object.entries(eloAtCutoff)
