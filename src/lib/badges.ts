@@ -21,6 +21,11 @@ function monthKey(d: string): string {
   const dt = parseMatchDate(d);
   return `${dt.getFullYear()}-${dt.getMonth()}`;
 }
+function monthLabel(key: string): string {
+  const [y, m] = key.split('-').map(Number);
+  const dt = new Date(y, m, 1);
+  return dt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
 function weekKey(d: string): string {
   const dt = parseMatchDate(d);
   const startOfYear = new Date(dt.getFullYear(), 0, 1);
@@ -39,6 +44,13 @@ export type BadgeDef = {
   tier: BadgeTier;
   pickles?: number;   // pickle value of badge (defaults to 1)
   pickleMode?: 'once' | 'event'; // 'once' = milestone, 'event' = recurring per occurrence
+};
+
+export type PickleEvent = {
+  date: string;          // raw match date string for sorting
+  emoji: string;
+  label: string;
+  pickles: number;
 };
 
 export const ALL_BADGES: BadgeDef[] = [
@@ -117,9 +129,14 @@ export function computePlayerData(
   playerName: string,
   matchNotes?: Record<number, MatchNote>,
   totalDinks = 0,
-): { badges: BadgeDef[]; pickles: PickleBreakdown } {
+): { badges: BadgeDef[]; pickles: PickleBreakdown; pickleLog: PickleEvent[] } {
   const T = playerName.toUpperCase().trim();
   const earnedIds = new Set<string>();
+  const log: PickleEvent[] = [];
+
+  function addLog(date: string, emoji: string, label: string, pickles: number) {
+    log.push({ date, emoji, label, pickles });
+  }
 
   // All competitive matches for this player (chronological)
   const myMatches = allMatches.filter(m =>
@@ -128,7 +145,7 @@ export function computePlayerData(
   );
 
   if (myMatches.length === 0) {
-    return { badges: [], pickles: { total: 0, fromBadges: 0, fromEvents: 0, fromUpsets: 0, fromParticipation: 0, fromDinks: 0 } };
+    return { badges: [], pickles: { total: 0, fromBadges: 0, fromEvents: 0, fromUpsets: 0, fromParticipation: 0, fromDinks: 0 }, pickleLog: [] };
   }
 
   // ── Pre-compute first appearance index for brand-new player detection ────────
@@ -146,16 +163,17 @@ export function computePlayerData(
   let pickleTheftDays = 0, revengeDays = 0, marathonDays = 0;
   let matchmakerWeeks = 0;
   let rentFreeCount = 0;
+  let opponentPickles = 0;
 
   // Win streak pickle counting (each time threshold is crossed)
   let winStreak = 0, winStreakPickles = 0;
   // Loss streak
-  let lossStreak = 0, maxLossStreak = 0, lossStreakPickles = 0;
+  let lossStreak = 0, lossStreakPickles = 0;
   let badgeLossStreak5 = false, badgeLossStreak10 = false, badgeLossStreak15 = false;
 
   // Per-opponent tracking
   const lossesTo: Record<string, number> = {};
-  const winsVs: Record<string, number[]> = {}; // opponent → [match index sequence]
+  const winsVs: Record<string, string[]> = {}; // opponent → win dates
 
   // Per-day tracking
   const dayMatches: Record<string, number> = {};
@@ -168,7 +186,7 @@ export function computePlayerData(
 
   // Badge flags (earned once)
   let singlesWins = 0, doublesWins = 0, doublesPlayed = 0;
-  let hasContent = false;
+  let firstWinLogged = false, allRounderLogged = false;
 
   for (let mi = 0; mi < myMatches.length; mi++) {
     const m = myMatches[mi];
@@ -178,67 +196,158 @@ export function computePlayerData(
     const won = winPlayers.includes(T);
     const myScore  = inT1 ? m.team1Score : m.team2Score;
     const oppScore = inT1 ? m.team2Score : m.team1Score;
+    const oppLabel = oppTeam.map(p => p.charAt(0) + p.slice(1).toLowerCase()).join('/');
 
-    // Volume
-    if (m.type === 'DOUBLES') doublesPlayed++;
+    // ── First match ────────────────────────────────────────────────────────────
+    if (mi === 0) {
+      earnedIds.add('first_match');
+      addLog(m.date, '🎾', 'Played your first competitive match', 1);
+    }
 
-    // Win streaks
+    // ── Volume milestones ──────────────────────────────────────────────────────
+    if (mi === 9)   { earnedIds.add('matches_10');  addLog(m.date, '📋', '10 matches played', 1); }
+    if (mi === 24)  { earnedIds.add('matches_25');  addLog(m.date, '💪', '25 matches played', 1); }
+    if (mi === 49)  { earnedIds.add('matches_50');  addLog(m.date, '🏃', '50 matches played', 1); }
+    if (mi === 99)  { earnedIds.add('matches_100'); addLog(m.date, '🔱', '100 matches played', 1); }
+
+    // ── Doubles volume ─────────────────────────────────────────────────────────
+    if (m.type === 'DOUBLES') {
+      doublesPlayed++;
+      if (doublesPlayed === 20) {
+        earnedIds.add('doubles_20');
+        addLog(m.date, '🤝', '20 doubles matches played', 1);
+      }
+    }
+
     if (won) {
       if (m.type === 'SINGLES') singlesWins++;
       if (m.type === 'DOUBLES') doublesWins++;
+
+      // First win
+      if (!firstWinLogged) {
+        firstWinLogged = true;
+        earnedIds.add('first_win');
+        addLog(m.date, '🏆', 'First match win', 1);
+      }
+
+      // All-rounder
+      if (!allRounderLogged && singlesWins > 0 && doublesWins > 0) {
+        allRounderLogged = true;
+        earnedIds.add('all_rounder');
+        addLog(m.date, '🔄', 'Won in both singles & doubles', 1);
+      }
+
       winStreak++;
       lossStreak = 0;
-      if (winStreak === 3)  { earnedIds.add('streak_3');  winStreakPickles++; }
-      if (winStreak === 5)  { earnedIds.add('streak_5');  winStreakPickles++; }
-      if (winStreak === 10) { earnedIds.add('streak_10'); winStreakPickles++; }
 
-      // Event badges (wins)
-      if (myScore === 11 && oppScore === 0) { earnedIds.add('bagel'); bagels++; }
-      if (myScore - oppScore >= 8)          { earnedIds.add('blowout'); blowouts++; }
-      if (myScore - oppScore === 1)         { earnedIds.add('clutch'); clutches++; }
-      if (myScore > 11 && myScore - oppScore === 2) { earnedIds.add('heartbreaker'); heartbreakers++; }
+      if (winStreak === 3)  { earnedIds.add('streak_3');  winStreakPickles++; addLog(m.date, '🔥', '3-match win streak', 1); }
+      if (winStreak === 5)  { earnedIds.add('streak_5');  winStreakPickles++; addLog(m.date, '⚡', '5-match win streak', 1); }
+      if (winStreak === 10) { earnedIds.add('streak_10'); winStreakPickles++; addLog(m.date, '💫', '10-match win streak', 1); }
 
-      // Per-opponent win streak (rent free)
-      oppTeam.forEach(opp => {
-        if (!winsVs[opp]) winsVs[opp] = [];
-        winsVs[opp].push(mi);
-      });
+      // Performance events
+      if (myScore === 11 && oppScore === 0) {
+        earnedIds.add('bagel'); bagels++;
+        addLog(m.date, '🥒', `Won 11–0 vs ${oppLabel}`, 1);
+      }
+      if (myScore - oppScore >= 8) {
+        earnedIds.add('blowout'); blowouts++;
+        addLog(m.date, '💥', `Won by ${myScore - oppScore} vs ${oppLabel}`, 1);
+      }
+      if (myScore - oppScore === 1) {
+        earnedIds.add('clutch'); clutches++;
+        addLog(m.date, '😤', `Clutch 1-point win vs ${oppLabel}`, 1);
+      }
+      if (myScore > 11 && myScore - oppScore === 2) {
+        earnedIds.add('heartbreaker'); heartbreakers++;
+        addLog(m.date, '💔', `Extra-point win vs ${oppLabel} (${myScore}–${oppScore})`, 1);
+      }
 
-      // Pickle theft (3 wins over same player in one day)
+      // Pickle theft: 3 wins over same player in one day
       if (!dayOppWins[m.date]) dayOppWins[m.date] = {};
       oppTeam.forEach(opp => {
         dayOppWins[m.date][opp] = (dayOppWins[m.date][opp] ?? 0) + 1;
         if (dayOppWins[m.date][opp] === 3) {
           earnedIds.add('pickle_theft');
           pickleTheftDays++;
+          addLog(m.date, '🦹', `Beat ${opp.charAt(0) + opp.slice(1).toLowerCase()} 3× in one day`, 1);
         }
       });
+
+      // Rent free: 5 wins over same opponent
+      oppTeam.forEach(opp => {
+        if (!winsVs[opp]) winsVs[opp] = [];
+        winsVs[opp].push(m.date);
+        if (winsVs[opp].length === 5) {
+          earnedIds.add('rent_free');
+          rentFreeCount++;
+          addLog(m.date, '🏠', `5 wins over ${opp.charAt(0) + opp.slice(1).toLowerCase()}`, 1);
+        }
+      });
+
     } else {
       winStreak = 0;
       lossStreak++;
-      if (lossStreak > maxLossStreak) maxLossStreak = lossStreak;
 
       // Loss streak badges + pickles
-      if (lossStreak === 5)  { if (!badgeLossStreak5)  { earnedIds.add('brine_award');    badgeLossStreak5  = true; } lossStreakPickles += 2; }
-      if (lossStreak === 10) { if (!badgeLossStreak10) { earnedIds.add('extra_salty');    badgeLossStreak10 = true; } lossStreakPickles += 5; }
-      if (lossStreak === 15) { if (!badgeLossStreak15) { earnedIds.add('pickled_beyond'); badgeLossStreak15 = true; } lossStreakPickles += 10; }
+      if (lossStreak === 5)  {
+        if (!badgeLossStreak5)  { earnedIds.add('brine_award');    badgeLossStreak5  = true; }
+        lossStreakPickles += 2;
+        addLog(m.date, '🧂', '5-match losing streak', 2);
+      }
+      if (lossStreak === 10) {
+        if (!badgeLossStreak10) { earnedIds.add('extra_salty');    badgeLossStreak10 = true; }
+        lossStreakPickles += 5;
+        addLog(m.date, '😤', '10-match losing streak', 5);
+      }
+      if (lossStreak === 15) {
+        if (!badgeLossStreak15) { earnedIds.add('pickled_beyond'); badgeLossStreak15 = true; }
+        lossStreakPickles += 10;
+        addLog(m.date, '😵', '15-match losing streak', 10);
+      }
 
       // Lose 11-0
       if (oppScore === 11 && myScore === 0) {
         earnedIds.add('reverse_pickle');
         reverseBagels++;
+        addLog(m.date, '🙃', `Lost 11–0 to ${oppLabel}`, 2);
         dayBagelsLost[m.date] = (dayBagelsLost[m.date] ?? 0) + 1;
-        if (dayBagelsLost[m.date] === 2) { earnedIds.add('again'); }
+        if (dayBagelsLost[m.date] === 2) {
+          earnedIds.add('again');
+          addLog(m.date, '😭', 'Lost 11–0 twice in one day', 5);
+        }
       }
 
-      // Losses to opponent tracking
-      oppTeam.forEach(opp => { lossesTo[opp] = (lossesTo[opp] ?? 0) + 1; });
+      // Per-opponent loss milestones
+      oppTeam.forEach(opp => {
+        lossesTo[opp] = (lossesTo[opp] ?? 0) + 1;
+        const oppName = opp.charAt(0) + opp.slice(1).toLowerCase();
+        if (lossesTo[opp] === 10) {
+          earnedIds.add('frequent_customer');
+          opponentPickles += 3;
+          addLog(m.date, '🎫', `Lost to ${oppName} 10 times`, 3);
+        }
+        if (lossesTo[opp] === 20) {
+          earnedIds.add('season_ticket');
+          opponentPickles += 5;
+          addLog(m.date, '🎟️', `Lost to ${oppName} 20 times`, 5);
+        }
+        if (lossesTo[opp] === 30) {
+          earnedIds.add('property_of');
+          opponentPickles += 10;
+          addLog(m.date, '🏷️', `Lost to ${oppName} 30 times`, 10);
+        }
+      });
     }
 
     // Per-day match count
     dayMatches[m.date] = (dayMatches[m.date] ?? 0) + 1;
+    if (dayMatches[m.date] === 10) {
+      earnedIds.add('marathon_pickle');
+      marathonDays++;
+      addLog(m.date, '🏃', '10 matches in one day', 1);
+    }
 
-    // Revenge pickle: lose to someone then beat them same day
+    // Revenge pickle tracking
     if (!dayOppResults[m.date]) dayOppResults[m.date] = [];
     oppTeam.forEach(opp => dayOppResults[m.date].push({ opp, won }));
 
@@ -248,6 +357,7 @@ export function computePlayerData(
       if (firstAppearance[opp] === globalMatchIdx) {
         earnedIds.add('friendly_pickle');
         friendlyCount++;
+        addLog(m.date, '👋', `Played against ${opp.charAt(0) + opp.slice(1).toLowerCase()}'s first ever match`, 1);
       }
     });
 
@@ -255,81 +365,45 @@ export function computePlayerData(
     if (m.type === 'DOUBLES') {
       const wk = weekKey(m.date);
       if (!weekPartners[wk]) weekPartners[wk] = new Set();
+      const prevSize = weekPartners[wk].size;
       const myTeam = (inT1 ? m.team1 : m.team2).toUpperCase().split('/').map(p => p.trim()).filter(Boolean);
       myTeam.filter(p => p !== T).forEach(p => weekPartners[wk].add(p));
+      if (prevSize < 5 && weekPartners[wk].size >= 5) {
+        earnedIds.add('matchmaker');
+        matchmakerWeeks++;
+        addLog(m.date, '🤝', '5 different doubles partners in one week', 1);
+      }
     }
 
-    // Marathon: 10 matches in one day
-    if (dayMatches[m.date] === 10) earnedIds.add('marathon_pickle');
-  }
-
-  // Post-loop checks
-  earnedIds.add('first_match');
-  if (myMatches.length >= 10)  earnedIds.add('matches_10');
-  if (myMatches.length >= 25)  earnedIds.add('matches_25');
-  if (myMatches.length >= 50)  earnedIds.add('matches_50');
-  if (myMatches.length >= 100) earnedIds.add('matches_100');
-
-  if (singlesWins + doublesWins > 0)    earnedIds.add('first_win');
-  if (doublesPlayed >= 20)              earnedIds.add('doubles_20');
-  if (singlesWins > 0 && doublesWins > 0) earnedIds.add('all_rounder');
-
-  // Rent free: 5 consecutive wins over same opponent
-  for (const [, seq] of Object.entries(winsVs)) {
-    if (seq.length < 5) continue;
-    let consec = 1;
-    for (let i = 1; i < seq.length; i++) {
-      // "consecutive" here means these match indices are uninterrupted by a loss to that opponent
-      // Simple approach: just check if we have 5+ wins total (opponent-focused consecutive)
-      consec++;
-      if (consec >= 5) { earnedIds.add('rent_free'); rentFreeCount++; break; }
+    // Content creator
+    if (matchNotes && matchNotes[m.matchId]?.photoUrl && !earnedIds.has('content')) {
+      earnedIds.add('content');
+      addLog(m.date, '📸', 'Logged a match with a photo', 1);
     }
   }
 
-  // Revenge pickle
-  for (const dayArr of Object.values(dayOppResults)) {
+  // ── Revenge pickle (post-loop per day) ────────────────────────────────────────
+  for (const [date, dayArr] of Object.entries(dayOppResults)) {
     const oppMap: Record<string, boolean[]> = {};
     dayArr.forEach(({ opp, won }) => { if (!oppMap[opp]) oppMap[opp] = []; oppMap[opp].push(won); });
-    for (const seq of Object.values(oppMap)) {
+    for (const [opp, seq] of Object.entries(oppMap)) {
       for (let i = 0; i < seq.length - 1; i++) {
         if (!seq[i] && seq.slice(i + 1).some(v => v)) {
           earnedIds.add('revenge_pickle');
           revengeDays++;
+          addLog(date, '⚔️', `Revenge win vs ${opp.charAt(0) + opp.slice(1).toLowerCase()}`, 1);
           break;
         }
       }
     }
   }
 
-  // Marathon days
-  marathonDays = Object.values(dayMatches).filter(c => c >= 10).length;
-
-  // Again?!? days (lose 11-0 twice in same day)
-  const againDays = Object.values(dayBagelsLost).filter(c => c >= 2).length;
-
-  // Matchmaker qualifying weeks
-  matchmakerWeeks = Object.values(weekPartners).filter(s => s.size >= 5).length;
-  if (matchmakerWeeks > 0) earnedIds.add('matchmaker');
-
-  // Per-opponent losses — badges + pickles
-  let opponentPickles = 0;
-  for (const losses of Object.values(lossesTo)) {
-    if (losses >= 10) { earnedIds.add('frequent_customer'); opponentPickles += 3; }
-    if (losses >= 20) { earnedIds.add('season_ticket');     opponentPickles += 5; }
-    if (losses >= 30) { earnedIds.add('property_of');       opponentPickles += 10; }
-  }
-
-  // Content creator
-  if (matchNotes) {
-    hasContent = myMatches.some(m => matchNotes[m.matchId]?.photoUrl);
-    if (hasContent) earnedIds.add('content');
-  }
-
-  // ── Full ELO replay — peak ELO, tiny_dill, upset, upset-win pickle count ────
+  // ── Full ELO replay — peak ELO, tiny_dill, upset pickles ─────────────────────
   const singlesElo: Record<string, number> = {};
   const doublesElo: Record<string, number> = {};
   let peakElo = 1000;
   let upsetPickles = 0;
+  const eloMilestoneDates: Record<number, string> = {};
 
   for (const m of allMatches) {
     if (m.bracket.toUpperCase() === 'CASUAL') continue;
@@ -353,14 +427,16 @@ export function computePlayerData(
       const myTeamWon = inT1 ? team1Won : !team1Won;
       const myAvg  = inT1 ? avg1 : avg2;
       const oppAvg = inT1 ? avg2 : avg1;
+      const oppTeamRaw = inT1 ? t2 : t1;
+      const oppLabel2 = oppTeamRaw.map(p => p.charAt(0) + p.slice(1).toLowerCase()).join('/');
 
       if (myTeamWon) {
-        // Upset badge (200+ ELO higher)
         if (oppAvg - myAvg >= 200) earnedIds.add('upset');
 
-        // Upset pickles (1 per 50 ELO over, opponent must be 50+ ELO higher)
         if (oppAvg - myAvg >= 50) {
-          upsetPickles += Math.floor((oppAvg - myAvg) / 50);
+          const gained = Math.floor((oppAvg - myAvg) / 50);
+          upsetPickles += gained;
+          addLog(m.date, '🎯', `Upset win vs ${oppLabel2} (+${Math.round(oppAvg - myAvg)} ELO gap)`, gained);
         }
 
         // Tiny dill: won as lowest ELO on court
@@ -370,6 +446,7 @@ export function computePlayerData(
         if (isLowest && allOnCourt.length > 1) {
           earnedIds.add('tiny_dill');
           tinyDillCount++;
+          addLog(m.date, '🌱', `Won as lowest ELO on court vs ${oppLabel2}`, 1);
         }
       }
     }
@@ -391,24 +468,48 @@ export function computePlayerData(
     applyTeam(t1, o1);
     applyTeam(t2, o2);
 
-    if (singlesElo[T]) peakElo = Math.max(peakElo, singlesElo[T]);
-    if (doublesElo[T]) peakElo = Math.max(peakElo, doublesElo[T]);
+    // Track ELO milestone dates
+    const myElo = (singlesElo[T] || 0) > (doublesElo[T] || 0) ? singlesElo[T] : doublesElo[T];
+    if (myElo) {
+      const prevPeak = peakElo;
+      peakElo = Math.max(peakElo, myElo);
+      for (const threshold of [1100, 1200, 1300, 1400]) {
+        if (prevPeak < threshold && peakElo >= threshold && !eloMilestoneDates[threshold]) {
+          eloMilestoneDates[threshold] = m.date;
+        }
+      }
+    }
   }
 
-  if (peakElo >= 1100) earnedIds.add('elo_1100');
-  if (peakElo >= 1200) earnedIds.add('elo_1200');
-  if (peakElo >= 1300) earnedIds.add('elo_1300');
-  if (peakElo >= 1400) earnedIds.add('elo_1400');
+  if (peakElo >= 1100) { earnedIds.add('elo_1100'); if (eloMilestoneDates[1100]) addLog(eloMilestoneDates[1100], '📈', 'Reached 1100 ELO', 1); }
+  if (peakElo >= 1200) { earnedIds.add('elo_1200'); if (eloMilestoneDates[1200]) addLog(eloMilestoneDates[1200], '⭐', 'Reached 1200 ELO', 1); }
+  if (peakElo >= 1300) { earnedIds.add('elo_1300'); if (eloMilestoneDates[1300]) addLog(eloMilestoneDates[1300], '🌟', 'Reached 1300 ELO', 1); }
+  if (peakElo >= 1400) { earnedIds.add('elo_1400'); if (eloMilestoneDates[1400]) addLog(eloMilestoneDates[1400], '👑', 'Reached 1400 ELO', 1); }
+
+  // ── Monthly participation ─────────────────────────────────────────────────────
+  const monthCounts: Record<string, { count: number; lastDate: string }> = {};
+  myMatches.forEach(m => {
+    const mk = monthKey(m.date);
+    if (!monthCounts[mk]) monthCounts[mk] = { count: 0, lastDate: m.date };
+    monthCounts[mk].count++;
+    monthCounts[mk].lastDate = m.date;
+  });
+  let fromParticipation = 0;
+  for (const [mk, { count, lastDate }] of Object.entries(monthCounts)) {
+    const earned = Math.floor(count / 10);
+    if (earned > 0) {
+      fromParticipation += earned;
+      addLog(lastDate, '📅', `${count} matches in ${monthLabel(mk)}`, earned);
+    }
+  }
 
   // ── Build final badge list ───────────────────────────────────────────────────
   const badges = ALL_BADGES.filter(b => earnedIds.has(b.id));
 
   // ── Pickle counts ─────────────────────────────────────────────────────────────
-  // Once-type badges: 1 pickle each (or badge.pickles)
   const onceBadges = badges.filter(b => b.pickleMode === 'once');
   const fromBadges = onceBadges.reduce((s, b) => s + (b.pickles ?? 1), 0);
 
-  // Event-type: count recurring occurrences
   const eventPickles =
     bagels           * 1 +
     blowouts         * 1 +
@@ -421,27 +522,25 @@ export function computePlayerData(
     marathonDays     * 1 +
     matchmakerWeeks  * 1 +
     rentFreeCount    * 1 +
-    reverseBagels    * 2 +    // reverse_pickle = 2 pickles each
-    againDays        * 5 +    // again = 5 pickles each day
-    winStreakPickles  * 1 +   // 1 per time streak threshold crossed
-    lossStreakPickles +        // 2/5/10 per streak threshold crossed
-    opponentPickles;          // 3/5/10 per qualifying opponent
+    reverseBagels    * 2 +
+    Object.values(dayBagelsLost).filter(c => c >= 2).length * 5 +
+    winStreakPickles  * 1 +
+    lossStreakPickles +
+    opponentPickles;
 
-  // Monthly participation: 1 pickle per 10 matches in any given month
-  const monthCounts: Record<string, number> = {};
-  myMatches.forEach(m => { monthCounts[monthKey(m.date)] = (monthCounts[monthKey(m.date)] ?? 0) + 1; });
-  const fromParticipation = Object.values(monthCounts).reduce((s, c) => s + Math.floor(c / 10), 0);
-
-  // Dinks
   const fromDinks = Math.floor(totalDinks / 25);
-
   const fromEvents = eventPickles + upsetPickles;
-
   const total = fromBadges + fromEvents + fromParticipation + fromDinks;
+
+  // Sort log chronologically (oldest → newest) using parsed date
+  const sortedLog = [...log].sort((a, b) =>
+    parseMatchDate(a.date).getTime() - parseMatchDate(b.date).getTime()
+  );
 
   return {
     badges,
     pickles: { total, fromBadges, fromEvents, fromUpsets: upsetPickles, fromParticipation, fromDinks },
+    pickleLog: sortedLog,
   };
 }
 

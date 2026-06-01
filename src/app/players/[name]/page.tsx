@@ -7,6 +7,7 @@ import { getAllMatches, getTabRows, tabToObjects, getProfile, getEloRankings, ge
 import { computePlayerData } from '@/lib/badges';
 import ClaimButton from '@/components/ClaimButton';
 import ProfileTabs from '@/components/ProfileTabs';
+import PickleJarButton from '@/components/PickleJarButton';
 
 export const revalidate = 15;
 
@@ -44,7 +45,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
   if (playerMatches.length === 0 && matches.length > 0) return notFound();
 
   const matchNotes = await getMatchNotes(playerMatches.map((m) => m.matchId)).catch(() => ({}));
-  const { badges: earnedBadges, pickles } = computePlayerData(matches, name, matchNotes);
+  const { badges: earnedBadges, pickles, pickleLog } = computePlayerData(matches, name, matchNotes);
 
   const isClaimed = !!profile?.googleEmail;
   const isOwner = !!session?.user?.email && session.user.email === profile?.googleEmail;
@@ -105,13 +106,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
           )}
           <div className="mt-2 flex items-center gap-4 flex-wrap">
             <RecordBadge wins={singlesWins + doublesWins} losses={playerMatches.length - singlesWins - doublesWins} />
-            {pickles.total > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-lime-500/10 border border-lime-500/20 rounded-full">
-                <span className="text-base">🥒</span>
-                <span className="text-sm font-black text-lime-400">{pickles.total}</span>
-                <span className="text-xs text-slate-500 font-medium">pickles</span>
-              </div>
-            )}
+            <PickleJarButton total={pickles.total} log={pickleLog} />
           </div>
         </div>
         <Link href="/players" className="text-sm text-slate-500 hover:text-slate-300 transition-colors shrink-0">
