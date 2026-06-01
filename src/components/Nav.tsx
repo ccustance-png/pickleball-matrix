@@ -13,7 +13,7 @@ const links = [
   { href: '/players', label: 'Players' },
   { href: '/rivalries', label: 'Rivalries' },
   { href: '/stats', label: 'Stats' },
-  { href: '/social', label: 'Social' },
+  { href: '/social', label: 'Challenges' },
 ];
 
 export default function Nav() {
