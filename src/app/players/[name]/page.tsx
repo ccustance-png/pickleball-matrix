@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getAllMatches, getTabRows, tabToObjects, getProfile, getEloRankings, type MatchRow } from '@/lib/sheets';
 
-export const revalidate = 60;
+export const revalidate = 15;
 
 function RecordBadge({ wins, losses }: { wins: number; losses: number }) {
   const total = wins + losses;

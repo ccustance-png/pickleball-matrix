@@ -1,7 +1,7 @@
 import { getAllMatches, getEloRankings } from '@/lib/sheets';
 import PlayerTabs from '@/components/PlayerTabs';
 
-export const revalidate = 60;
+export const revalidate = 15;
 
 export default async function PlayersPage() {
   const [matches, elo] = await Promise.all([

@@ -30,7 +30,7 @@ function formatDate(raw: string): string {
 
 export async function getAllMatches(): Promise<MatchRow[]> {
   const url = `${scriptUrl()}?action=getMatches`;
-  const res = await fetch(url, { next: { revalidate: 30 } });
+  const res = await fetch(url, { next: { revalidate: 15 } });
   if (!res.ok) throw new Error(`Script error: ${res.status}`);
   const rows: string[][] = await res.json();
   return rows
@@ -64,7 +64,7 @@ export async function appendMatch(match: Omit<MatchRow, 'matchId'>): Promise<num
 export async function getTabRows(tabName: string): Promise<string[][]> {
   try {
     const url = `${scriptUrl()}?action=getTab&tab=${encodeURIComponent(tabName)}`;
-    const res = await fetch(url, { next: { revalidate: 30 } });
+    const res = await fetch(url, { next: { revalidate: 15 } });
     if (!res.ok) return [];
     return res.json();
   } catch {

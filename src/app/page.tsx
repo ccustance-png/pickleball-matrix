@@ -11,7 +11,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-export const revalidate = 60;
+export const revalidate = 15;
 
 export default async function HomePage() {
   const [matches, elo] = await Promise.all([
