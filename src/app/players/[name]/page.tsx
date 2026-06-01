@@ -14,12 +14,12 @@ function RecordBadge({ wins, losses }: { wins: number; losses: number }) {
   const total = wins + losses;
   const rate = total > 0 ? Math.round((wins / total) * 100) : 0;
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-slate-100 font-bold text-lg">{wins}–{losses}</span>
-      <div className="h-2 w-28 bg-slate-800 rounded-full overflow-hidden">
+    <div className="flex items-center gap-3 flex-nowrap">
+      <span className="text-slate-100 font-bold text-lg whitespace-nowrap shrink-0">{wins}–{losses}</span>
+      <div className="h-2 w-20 sm:w-28 bg-slate-800 rounded-full overflow-hidden shrink-0">
         <div className="h-full bg-lime-500 rounded-full transition-all" style={{ width: `${rate}%` }} />
       </div>
-      <span className="text-slate-400 text-sm">{rate}%</span>
+      <span className="text-slate-400 text-sm shrink-0">{rate}%</span>
     </div>
   );
 }
