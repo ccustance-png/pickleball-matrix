@@ -8,6 +8,7 @@ const links = [
   { href: '/', label: 'Home' },
   { href: '/submit', label: 'Log Match' },
   { href: '/players', label: 'Players' },
+  { href: '/rivalries', label: 'Rivalries' },
 ];
 
 export default function Nav() {
