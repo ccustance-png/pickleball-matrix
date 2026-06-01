@@ -42,6 +42,13 @@ function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
     const exp1 = expected(avg1, avg2);
     const win1 = m.win.trim().toUpperCase() === m.team1.trim().toUpperCase() ? 1 : 0;
 
+    // MOV multiplier: scales with score margin, dampened by ELO gap
+    // → blowout vs equal ELO = big bonus; blowout vs weak team = small bonus
+    const margin = Math.abs((m.team1Score || 0) - (m.team2Score || 0));
+    const competitiveness = 1 - Math.abs(exp1 - 0.5) * 2; // 1.0=equal, ~0=mismatch
+    const rawMov = 1 + Math.log(margin + 1) / Math.log(12);
+    const movMultiplier = 1 + (rawMov - 1) * competitiveness;
+
     const applyDoublesChange = (players: string[], baseChange: number) => {
       if (players.length < 2) {
         players.forEach((p) => { elo[p] += baseChange; });
@@ -54,17 +61,15 @@ function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
       players.forEach((p) => {
         const playerElo = elo[p] || 1000;
         if (playerElo >= hi) {
-          // Higher rated: base change unchanged
           elo[p] += baseChange;
         } else {
-          // Lower rated: more gain on win, less loss on defeat
           elo[p] += baseChange > 0 ? baseChange * proportion : baseChange / proportion;
         }
       });
     };
 
-    applyDoublesChange(team1Players, K * (win1 - exp1));
-    applyDoublesChange(team2Players, K * ((1 - win1) - (1 - exp1)));
+    applyDoublesChange(team1Players, K * movMultiplier * (win1 - exp1));
+    applyDoublesChange(team2Players, K * movMultiplier * ((1 - win1) - (1 - exp1)));
   }
 
   return Object.entries(eloAtCutoff)
