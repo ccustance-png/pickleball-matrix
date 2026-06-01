@@ -110,9 +110,9 @@ function computePowerRankings(
   // Composite: 70 / 20 / 10
   return raw
     .map(r => {
-      const eC = norm(r.elo,        eloVals)    * 0.70;
-      const rC = norm(r.recentRate, recentVals) * 0.20;
-      const sC = norm(r.avgOppElo,  sosVals)    * 0.10;
+      const eC = norm(r.elo,        eloVals)    * 0.55;
+      const rC = norm(r.recentRate, recentVals) * 0.30;
+      const sC = norm(r.avgOppElo,  sosVals)    * 0.15;
       return {
         name:          r.name,
         elo:           r.elo,
@@ -166,7 +166,7 @@ export default function PowerRankings({ matches, singlesElo, doublesElo, singles
       <div className="flex items-center justify-between mb-3">
         <div>
           <h2 className="text-lg font-semibold text-slate-200">⚡ Power Rankings</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Top 10 · ELO 70% · Recent 20% · Schedule 10%</p>
+          <p className="text-xs text-slate-500 mt-0.5">Top 10 · ELO 55% · Recent 30% · Schedule 15%</p>
         </div>
         <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1">
           {(['SINGLES', 'DOUBLES'] as const).map(t => (
@@ -244,15 +244,15 @@ export default function PowerRankings({ matches, singlesElo, doublesElo, singles
       <div className="flex items-center gap-5 mt-3 text-xs text-slate-600">
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-sm bg-lime-500 inline-block shrink-0" />
-          ELO (70%)
+          ELO (55%)
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block shrink-0" />
-          Recent form (20%)
+          Recent form (30%)
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-sm bg-purple-400 inline-block shrink-0" />
-          Strength of schedule (10%)
+          Strength of schedule (15%)
         </span>
       </div>
     </div>
