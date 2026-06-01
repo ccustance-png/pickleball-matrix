@@ -141,6 +141,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
         doublesTotal={doublesMatches.length}
         recentMatches={recentMatches}
         allMatches={playerMatches}
+        allMatchesForBadges={matches}
         matchNotes={matchNotes}
       />
     </div>

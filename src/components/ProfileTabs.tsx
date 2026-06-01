@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { MatchRow, MatchNote } from '@/lib/sheets';
 import MatchActivityCard from './MatchActivityCard';
 import MatchHistory from './MatchHistory';
+import BadgesGrid from './BadgesGrid';
+import { computePlayerBadges } from '@/lib/badges';
 
 function formatValue(v: string): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -54,22 +56,29 @@ type Props = {
   doublesTotal: number;
   recentMatches: MatchRow[];
   allMatches: MatchRow[];
+  allMatchesForBadges: MatchRow[];
   matchNotes: Record<number, MatchNote>;
 };
 
-type Tab = 'stats' | 'history' | 'activities';
+type Tab = 'stats' | 'history' | 'activities' | 'badges';
 
 export default function ProfileTabs({
   name, singlesStats, doublesStats,
   singlesWins, singlesTotal, doublesWins, doublesTotal,
-  recentMatches, allMatches, matchNotes,
+  recentMatches, allMatches, allMatchesForBadges, matchNotes,
 }: Props) {
   const [tab, setTab] = useState<Tab>('stats');
+
+  const earnedBadges = useMemo(
+    () => computePlayerBadges(allMatchesForBadges, name, matchNotes),
+    [allMatchesForBadges, name, matchNotes]
+  );
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'stats', label: 'Stats' },
     { id: 'history', label: 'History' },
     { id: 'activities', label: 'Activities' },
+    { id: 'badges', label: 'Badges' },
   ];
 
   // Matches that have notes (photo/location/description)
@@ -95,6 +104,11 @@ export default function ProfileTabs({
             {t.id === 'activities' && activitiesWithNotes.length > 0 && (
               <span className="ml-1.5 text-xs bg-lime-500/20 text-lime-400 px-1.5 py-0.5 rounded-full">
                 {activitiesWithNotes.length}
+              </span>
+            )}
+            {t.id === 'badges' && earnedBadges.length > 0 && (
+              <span className="ml-1.5 text-xs bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded-full">
+                {earnedBadges.length}
               </span>
             )}
           </button>
@@ -124,6 +138,11 @@ export default function ProfileTabs({
       {/* History */}
       {tab === 'history' && (
         <MatchHistory matches={recentMatches} name={name} />
+      )}
+
+      {/* Badges */}
+      {tab === 'badges' && (
+        <BadgesGrid earned={earnedBadges} showAll />
       )}
 
       {/* Activities */}
