@@ -20,6 +20,16 @@ export default function Nav() {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [myPlayer, setMyPlayer] = useState<string | null>(null);
+
+  // Fetch the claimed player name for the signed-in user
+  useEffect(() => {
+    if (!session?.user?.email) { setMyPlayer(null); return; }
+    fetch('/api/me')
+      .then((r) => r.json())
+      .then((d) => setMyPlayer(d.player ?? null))
+      .catch(() => setMyPlayer(null));
+  }, [session?.user?.email]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -100,6 +110,24 @@ export default function Nav() {
               <div className="border-t border-slate-800 py-1">
                 {session ? (
                   <div>
+                    {/* My Profile link */}
+                    {myPlayer && (
+                      <Link
+                        href={`/players/${encodeURIComponent(myPlayer)}`}
+                        className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
+                          pathname === `/players/${encodeURIComponent(myPlayer)}`
+                            ? 'text-lime-400 bg-lime-500/10'
+                            : 'text-slate-300 hover:text-slate-100 hover:bg-slate-800'
+                        }`}
+                      >
+                        {pathname === `/players/${encodeURIComponent(myPlayer)}` ? (
+                          <span className="w-1.5 h-1.5 rounded-full bg-lime-400 shrink-0" />
+                        ) : (
+                          <span className="text-base leading-none">👤</span>
+                        )}
+                        My Profile
+                      </Link>
+                    )}
                     <div className="px-4 py-2 text-xs text-slate-500 truncate">{session.user?.email}</div>
                     <button
                       onClick={() => signOut()}
