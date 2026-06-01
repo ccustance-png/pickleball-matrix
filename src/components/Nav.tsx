@@ -39,7 +39,7 @@ export default function Nav() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-bold text-lime-400 text-lg tracking-tight shrink-0">
           <Image src="/logo.png" alt="Pickleball ELO" width={32} height={32} className="rounded-md" />
-          <span className="hidden sm:inline">Pickleball ELO</span>
+          <span>Pickleball ELO</span>
         </Link>
 
         {/* Hamburger button */}
