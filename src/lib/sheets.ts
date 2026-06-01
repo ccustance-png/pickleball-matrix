@@ -176,6 +176,52 @@ export async function getAllMatchNotes(): Promise<MatchNote[]> {
   }
 }
 
+export type Challenge = {
+  challengeId: string;
+  fromPlayer: string;
+  fromEmail: string;
+  toPlayer: string;
+  type: 'SINGLES' | 'DOUBLES';
+  message: string;
+  status: 'OPEN' | 'ACCEPTED' | 'DECLINED' | 'COMPLETED';
+  createdAt: string;
+};
+
+export async function getChallenges(): Promise<Challenge[]> {
+  try {
+    const url = `${scriptUrl()}?action=getChallenges`;
+    const res = await fetch(url, { cache: 'no-store' });
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createChallenge(
+  fromPlayer: string,
+  fromEmail: string,
+  toPlayer: string,
+  type: string,
+  message: string
+): Promise<{ challengeId: string }> {
+  const res = await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'createChallenge', fromPlayer, fromEmail, toPlayer, type, message }),
+  });
+  return res.json();
+}
+
+export async function updateChallengeStatus(
+  challengeId: string,
+  status: string
+): Promise<void> {
+  await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'updateChallenge', challengeId, status }),
+  });
+}
+
 export type DinkEntry = {
   matchId: number;
   userEmail: string;
