@@ -12,6 +12,7 @@ const links = [
   { href: '/activities', label: 'Activities' },
   { href: '/players', label: 'Players' },
   { href: '/rivalries', label: 'Rivalries' },
+  { href: '/stats', label: 'Stats' },
 ];
 
 export default function Nav() {
