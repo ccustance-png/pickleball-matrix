@@ -3,9 +3,12 @@
 import { useState } from 'react';
 import type { MatchRow, MatchNote } from '@/lib/sheets';
 import MatchActivityCard from './MatchActivityCard';
+import SessionActivityCard from './SessionActivityCard';
 import MatchHistory from './MatchHistory';
 import BadgesGrid from './BadgesGrid';
 import type { BadgeDef, PickleBreakdown } from '@/lib/badges';
+
+const SID_RE = /^__sid:(\d+)__$/;
 
 function formatValue(v: string): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -78,10 +81,26 @@ export default function ProfileTabs({
     { id: 'badges', label: 'Badges' },
   ];
 
-  // Matches that have notes (photo/location/description)
-  const activitiesWithNotes = [...allMatches].reverse().filter(
-    (m) => matchNotes[m.matchId]?.photoUrl || matchNotes[m.matchId]?.location || matchNotes[m.matchId]?.description
-  );
+  // Build session groups from this player's matches
+  const linkedToAnchor = new Map<number, number>();
+  const sessionGroups = new Map<number, MatchRow[]>();
+  for (const m of allMatches) {
+    const note = matchNotes[m.matchId];
+    const sid = note?.description?.match(SID_RE);
+    if (sid) {
+      const anchorId = Number(sid[1]);
+      linkedToAnchor.set(m.matchId, anchorId);
+      if (!sessionGroups.has(anchorId)) sessionGroups.set(anchorId, []);
+      sessionGroups.get(anchorId)!.push(m);
+    }
+  }
+
+  // Matches that have notes — skip session-linked ones
+  const activitiesWithNotes = [...allMatches].reverse().filter((m) => {
+    if (linkedToAnchor.has(m.matchId)) return false;
+    const note = matchNotes[m.matchId];
+    return note && (note.photoUrl || note.location || note.description);
+  });
 
   return (
     <div>
@@ -186,14 +205,29 @@ export default function ProfileTabs({
               <p className="text-sm mt-1">Add a photo, location, or description when logging a match.</p>
             </div>
           ) : (
-            activitiesWithNotes.map((m) => (
-              <MatchActivityCard
-                key={m.matchId}
-                match={m}
-                name={name}
-                note={matchNotes[m.matchId]}
-              />
-            ))
+            activitiesWithNotes.map((m) => {
+              const linked = sessionGroups.get(m.matchId) ?? [];
+              if (linked.length > 0) {
+                const allSessionMatches = [m, ...linked].sort((a, b) => a.matchId - b.matchId);
+                return (
+                  <SessionActivityCard
+                    key={m.matchId}
+                    anchorMatch={m}
+                    note={matchNotes[m.matchId]}
+                    matches={allSessionMatches}
+                    name={name}
+                  />
+                );
+              }
+              return (
+                <MatchActivityCard
+                  key={m.matchId}
+                  match={m}
+                  name={name}
+                  note={matchNotes[m.matchId]}
+                />
+              );
+            })
           )}
         </div>
       )}
