@@ -12,13 +12,19 @@ function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
     return 1 / (1 + Math.pow(10, (b - a) / 400));
   }
 
+  // Dynamic K: higher ELO = smaller K (harder to extend lead)
+  //            lower ELO  = larger K  (easier to close gap)
+  function dynK(playerElo: number) {
+    return K * (2000 / (Math.max(playerElo, 400) + 1000));
+  }
+
   function parseDate(d: string): Date {
     const [m, dy, y] = d.split('/').map(Number);
     return new Date(2000 + (y || 0), (m || 1) - 1, dy || 1);
   }
 
   const cutoff = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000);
-  const filtered = matches.filter((m) => m.type === type);
+  const filtered = matches.filter((m) => m.type === type && m.bracket.toUpperCase() !== 'CASUAL');
 
   const elo: Record<string, number> = {};
   const eloAtCutoff: Record<string, number> = {};
@@ -46,12 +52,13 @@ function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
     // → blowout vs equal ELO = big bonus; blowout vs weak team = small bonus
     const margin = Math.abs((m.team1Score || 0) - (m.team2Score || 0));
     const competitiveness = 1 - Math.abs(exp1 - 0.5) * 2; // 1.0=equal, ~0=mismatch
-    const rawMov = 1 + Math.log(margin + 1) / Math.log(12);
+    const rawMov = 1 + margin * 0.1;
     const movMultiplier = 1 + (rawMov - 1) * competitiveness;
 
-    const applyDoublesChange = (players: string[], baseChange: number) => {
+    // outcome = movMultiplier * (win - expected), K NOT included — each player applies their own dynK
+    const applyDoublesChange = (players: string[], outcome: number) => {
       if (players.length < 2) {
-        players.forEach((p) => { elo[p] += baseChange; });
+        players.forEach((p) => { elo[p] += dynK(elo[p] || 1000) * outcome; });
         return;
       }
       const elos = players.map((p) => elo[p] || 1000);
@@ -60,16 +67,17 @@ function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
       const proportion = lo > 0 ? hi / lo : 1;
       players.forEach((p) => {
         const playerElo = elo[p] || 1000;
+        const change = dynK(playerElo) * outcome;
         if (playerElo >= hi) {
-          elo[p] += baseChange;
+          elo[p] += change;
         } else {
-          elo[p] += baseChange > 0 ? baseChange * proportion : baseChange / proportion;
+          elo[p] += change > 0 ? change * proportion : change / proportion;
         }
       });
     };
 
-    applyDoublesChange(team1Players, K * movMultiplier * (win1 - exp1));
-    applyDoublesChange(team2Players, K * movMultiplier * ((1 - win1) - (1 - exp1)));
+    applyDoublesChange(team1Players, movMultiplier * (win1 - exp1));
+    applyDoublesChange(team2Players, movMultiplier * ((1 - win1) - (1 - exp1)));
   }
 
   return Object.entries(eloAtCutoff)

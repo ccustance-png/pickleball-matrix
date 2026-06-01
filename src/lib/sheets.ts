@@ -176,6 +176,13 @@ export async function getAllMatchNotes(): Promise<MatchNote[]> {
   }
 }
 
+export async function deleteMatch(matchId: number): Promise<void> {
+  await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'deleteMatch', matchId }),
+  });
+}
+
 export async function saveMatchNote(note: MatchNote): Promise<void> {
   await fetch(scriptUrl(), {
     method: 'POST',

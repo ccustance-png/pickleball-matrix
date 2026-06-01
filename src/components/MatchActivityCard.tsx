@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { MatchRow, MatchNote } from '@/lib/sheets';
 import MatchComments from './MatchComments';
+import ActivityCardActions from './ActivityCardActions';
 
 type Props = {
   match: MatchRow;
@@ -32,7 +33,11 @@ export default function MatchActivityCard({ match, name, note }: Props) {
             <span className="text-xs px-2 py-0.5 rounded-full bg-black/50 backdrop-blur text-slate-300 font-medium">
               {match.type === 'SINGLES' ? 'Singles' : 'Doubles'}
             </span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-black/50 backdrop-blur text-slate-300 font-medium">
+            <span className={`text-xs px-2 py-0.5 rounded-full backdrop-blur font-medium ${
+              match.bracket.toUpperCase() === 'CASUAL'
+                ? 'bg-amber-500/30 text-amber-300'
+                : 'bg-black/50 text-slate-300'
+            }`}>
               {match.bracket}
             </span>
           </div>
@@ -48,7 +53,11 @@ export default function MatchActivityCard({ match, name, note }: Props) {
                 <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-medium">
                   {match.type === 'SINGLES' ? 'Singles' : 'Doubles'}
                 </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-medium">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  match.bracket.toUpperCase() === 'CASUAL'
+                    ? 'bg-amber-500/15 text-amber-400'
+                    : 'bg-slate-800 text-slate-400'
+                }`}>
                   {match.bracket}
                 </span>
               </>
@@ -127,6 +136,16 @@ export default function MatchActivityCard({ match, name, note }: Props) {
           <p className="text-sm text-slate-300 leading-relaxed">{note.description}</p>
         )}
       </div>
+
+      {/* Share + Delete */}
+      <ActivityCardActions
+        matchId={match.matchId}
+        shareText={`${winTeam.join('/')} beat ${lossTeam.join('/')} ${
+          match.team1Score > match.team2Score ? match.team1Score : match.team2Score
+        }–${
+          match.team1Score > match.team2Score ? match.team2Score : match.team1Score
+        } 🏓`}
+      />
 
       {/* Comments */}
       <MatchComments matchId={match.matchId} />
