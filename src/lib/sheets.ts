@@ -112,6 +112,27 @@ export async function getEloRankings(): Promise<{ singles: EloEntry[]; doubles: 
   return { singles, doubles };
 }
 
+export type MatchNote = { matchId: number; photoUrl: string; location: string; description: string };
+
+export async function getMatchNotes(matchIds: number[]): Promise<Record<number, MatchNote>> {
+  try {
+    if (matchIds.length === 0) return {};
+    const url = `${scriptUrl()}?action=getMatchNotes&ids=${matchIds.join(',')}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    const data = await res.json();
+    return data as Record<number, MatchNote>;
+  } catch {
+    return {};
+  }
+}
+
+export async function saveMatchNote(note: MatchNote): Promise<void> {
+  await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'saveMatchNote', ...note }),
+  });
+}
+
 export function tabToObjects(rows: string[][]): Record<string, string>[] {
   if (rows.length < 2) return [];
   const [headers, ...data] = rows;

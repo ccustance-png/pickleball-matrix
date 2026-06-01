@@ -1,0 +1,152 @@
+'use client';
+
+import { useState } from 'react';
+import type { MatchRow, MatchNote } from '@/lib/sheets';
+import MatchActivityCard from './MatchActivityCard';
+import MatchHistory from './MatchHistory';
+
+function formatValue(v: string): string {
+  if (v === null || v === undefined || v === '') return '—';
+  const s = String(v);
+  const n = Number(s);
+  if (!isNaN(n) && s.trim() !== '') {
+    return Number.isInteger(n) ? s : n.toFixed(2);
+  }
+  return s;
+}
+
+function RecordBadge({ wins, losses }: { wins: number; losses: number }) {
+  const total = wins + losses;
+  const rate = total > 0 ? Math.round((wins / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-slate-100 font-bold">{wins}–{losses}</span>
+      <div className="h-1.5 w-20 bg-slate-800 rounded-full overflow-hidden">
+        <div className="h-full bg-lime-500 rounded-full" style={{ width: `${rate}%` }} />
+      </div>
+      <span className="text-slate-400 text-xs">{rate}%</span>
+    </div>
+  );
+}
+
+function StatsGrid({ data }: { data: Record<string, string> }) {
+  const entries = Object.entries(data).filter(([k]) => k !== '' && k !== 'PLAYER');
+  if (entries.length === 0) return <p className="text-slate-500 text-sm">No data</p>;
+  return (
+    <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {entries.map(([k, v]) => (
+        <div key={k} className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
+          <dt className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">{k}</dt>
+          <dd className="text-slate-100 font-semibold">{formatValue(v)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+type Props = {
+  name: string;
+  singlesStats: Record<string, string> | null;
+  doublesStats: Record<string, string> | null;
+  singlesWins: number;
+  singlesTotal: number;
+  doublesWins: number;
+  doublesTotal: number;
+  recentMatches: MatchRow[];
+  allMatches: MatchRow[];
+  matchNotes: Record<number, MatchNote>;
+};
+
+type Tab = 'stats' | 'history' | 'activities';
+
+export default function ProfileTabs({
+  name, singlesStats, doublesStats,
+  singlesWins, singlesTotal, doublesWins, doublesTotal,
+  recentMatches, allMatches, matchNotes,
+}: Props) {
+  const [tab, setTab] = useState<Tab>('stats');
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'stats', label: 'Stats' },
+    { id: 'history', label: 'History' },
+    { id: 'activities', label: 'Activities' },
+  ];
+
+  // Matches that have notes (photo/location/description)
+  const activitiesWithNotes = [...allMatches].reverse().filter(
+    (m) => matchNotes[m.matchId]?.photoUrl || matchNotes[m.matchId]?.location || matchNotes[m.matchId]?.description
+  );
+
+  return (
+    <div>
+      {/* Tab bar */}
+      <div className="flex gap-1 mb-6 bg-slate-900 border border-slate-800 rounded-lg p-1 w-fit">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+              tab === t.id
+                ? 'bg-lime-500 text-slate-900'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            {t.label}
+            {t.id === 'activities' && activitiesWithNotes.length > 0 && (
+              <span className="ml-1.5 text-xs bg-lime-500/20 text-lime-400 px-1.5 py-0.5 rounded-full">
+                {activitiesWithNotes.length}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Stats */}
+      {tab === 'stats' && (
+        <div className="space-y-6">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Singles</h2>
+              <RecordBadge wins={singlesWins} losses={singlesTotal - singlesWins} />
+            </div>
+            {singlesStats ? <StatsGrid data={singlesStats} /> : <p className="text-slate-600 text-sm">No singles sheet data.</p>}
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Doubles</h2>
+              <RecordBadge wins={doublesWins} losses={doublesTotal - doublesWins} />
+            </div>
+            {doublesStats ? <StatsGrid data={doublesStats} /> : <p className="text-slate-600 text-sm">No doubles sheet data.</p>}
+          </div>
+        </div>
+      )}
+
+      {/* History */}
+      {tab === 'history' && (
+        <MatchHistory matches={recentMatches} name={name} />
+      )}
+
+      {/* Activities */}
+      {tab === 'activities' && (
+        <div className="space-y-4">
+          {activitiesWithNotes.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">
+              <p className="text-4xl mb-3">📸</p>
+              <p className="font-medium">No activities yet</p>
+              <p className="text-sm mt-1">Add a photo, location, or description when logging a match.</p>
+            </div>
+          ) : (
+            activitiesWithNotes.map((m) => (
+              <MatchActivityCard
+                key={m.matchId}
+                match={m}
+                name={name}
+                note={matchNotes[m.matchId]}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
