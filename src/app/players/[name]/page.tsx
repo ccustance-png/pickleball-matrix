@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getAllMatches, getTabRows, tabToObjects, getProfile, getEloRankings, getMatchNotes } from '@/lib/sheets';
+import { computePlayerData } from '@/lib/badges';
 import ClaimButton from '@/components/ClaimButton';
 import ProfileTabs from '@/components/ProfileTabs';
 
@@ -43,6 +44,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
   if (playerMatches.length === 0 && matches.length > 0) return notFound();
 
   const matchNotes = await getMatchNotes(playerMatches.map((m) => m.matchId)).catch(() => ({}));
+  const { badges: earnedBadges, pickles } = computePlayerData(matches, name, matchNotes);
 
   const isClaimed = !!profile?.googleEmail;
   const isOwner = !!session?.user?.email && session.user.email === profile?.googleEmail;
@@ -101,8 +103,15 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
           {profile?.bio && (
             <p className="text-slate-400 text-sm mt-1">{profile.bio}</p>
           )}
-          <div className="mt-2">
+          <div className="mt-2 flex items-center gap-4 flex-wrap">
             <RecordBadge wins={singlesWins + doublesWins} losses={playerMatches.length - singlesWins - doublesWins} />
+            {pickles.total > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-lime-500/10 border border-lime-500/20 rounded-full">
+                <span className="text-base">🥒</span>
+                <span className="text-sm font-black text-lime-400">{pickles.total}</span>
+                <span className="text-xs text-slate-500 font-medium">pickles</span>
+              </div>
+            )}
           </div>
         </div>
         <Link href="/players" className="text-sm text-slate-500 hover:text-slate-300 transition-colors shrink-0">
@@ -141,8 +150,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
         doublesTotal={doublesMatches.length}
         recentMatches={recentMatches}
         allMatches={playerMatches}
-        allMatchesForBadges={matches}
         matchNotes={matchNotes}
+        earnedBadges={earnedBadges}
+        pickles={pickles}
       />
     </div>
   );

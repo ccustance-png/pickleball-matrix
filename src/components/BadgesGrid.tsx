@@ -44,9 +44,14 @@ export default function BadgesGrid({ earned, showAll = true }: Props) {
                 >
                   <span className="text-3xl">{badge.emoji}</span>
                   <span className={`text-xs font-bold leading-tight ${s.text}`}>{badge.name}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${s.bg} ${s.text} border ${s.border}`}>
-                    {TIER_STYLES[badge.tier].label}
-                  </span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${s.bg} ${s.text} border ${s.border}`}>
+                      {TIER_STYLES[badge.tier].label}
+                    </span>
+                    <span className="text-xs text-slate-500 font-semibold">
+                      🥒×{badge.pickles ?? 1}
+                    </span>
+                  </div>
                 </div>
               );
             })}

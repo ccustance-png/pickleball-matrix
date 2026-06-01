@@ -1,6 +1,6 @@
 import type { MatchRow, MatchNote } from './sheets';
 
-// ── ELO replay helpers (must mirror Apps Script exactly) ─────────────────────
+// ── ELO replay helpers (mirrors Apps Script exactly) ─────────────────────────
 const K = 32;
 function dynK(e: number) { return K * (2000 / (Math.max(e, 400) + 1000)); }
 function expWin(a: number, b: number) { return 1 / (1 + Math.pow(10, (b - a) / 400)); }
@@ -9,6 +9,26 @@ function movMult(margin: number, exp1: number) {
   return 1 + margin * 0.1 * c;
 }
 
+// ── Date helpers ──────────────────────────────────────────────────────────────
+function parseMatchDate(d: string): Date {
+  if (d.includes('/')) {
+    const [m, dy, y] = d.split('/').map(Number);
+    return new Date(2000 + (y || 0), (m || 1) - 1, dy || 1);
+  }
+  return new Date(d);
+}
+function monthKey(d: string): string {
+  const dt = parseMatchDate(d);
+  return `${dt.getFullYear()}-${dt.getMonth()}`;
+}
+function weekKey(d: string): string {
+  const dt = parseMatchDate(d);
+  const startOfYear = new Date(dt.getFullYear(), 0, 1);
+  const week = Math.floor((dt.getTime() - startOfYear.getTime()) / (7 * 86400000));
+  return `${dt.getFullYear()}-W${week}`;
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 export type BadgeTier = 'bronze' | 'silver' | 'gold' | 'legendary';
 
 export type BadgeDef = {
@@ -17,38 +37,62 @@ export type BadgeDef = {
   name: string;
   desc: string;
   tier: BadgeTier;
+  pickles?: number;   // pickle value of badge (defaults to 1)
+  pickleMode?: 'once' | 'event'; // 'once' = milestone, 'event' = recurring per occurrence
 };
 
 export const ALL_BADGES: BadgeDef[] = [
-  // — Getting started —
-  { id: 'first_match',  emoji: '🎾', name: 'Game On',        desc: 'Played your first competitive match',       tier: 'bronze'    },
-  { id: 'first_win',   emoji: '🏆', name: 'First Blood',     desc: 'Won your first match',                      tier: 'bronze'    },
-  { id: 'all_rounder', emoji: '🔄', name: 'All-Rounder',     desc: 'Won in both singles and doubles',           tier: 'bronze'    },
-  { id: 'content',     emoji: '📸', name: 'Content Creator', desc: 'Logged a match with a photo',               tier: 'bronze'    },
+  // ── Getting started ──────────────────────────────────────────────────────────
+  { id: 'first_match',  emoji: '🎾', name: 'Game On',        desc: 'Played your first competitive match',             tier: 'bronze',    pickleMode: 'once' },
+  { id: 'first_win',   emoji: '🏆', name: 'First Blood',     desc: 'Won your first match',                            tier: 'bronze',    pickleMode: 'once' },
+  { id: 'all_rounder', emoji: '🔄', name: 'All-Rounder',     desc: 'Won in both singles and doubles',                 tier: 'bronze',    pickleMode: 'once' },
+  { id: 'content',     emoji: '📸', name: 'Content Creator', desc: 'Logged a match with a photo',                     tier: 'bronze',    pickleMode: 'once' },
 
-  // — Volume —
-  { id: 'matches_10',  emoji: '📋', name: 'Regular',         desc: 'Played 10 competitive matches',             tier: 'bronze'    },
-  { id: 'matches_25',  emoji: '💪', name: 'Grinder',         desc: 'Played 25 competitive matches',             tier: 'silver'    },
-  { id: 'matches_50',  emoji: '🏃', name: 'Veteran',         desc: 'Played 50 competitive matches',             tier: 'gold'      },
-  { id: 'matches_100', emoji: '🔱', name: 'Legend',          desc: 'Played 100 competitive matches',            tier: 'legendary' },
-  { id: 'doubles_20',  emoji: '🤝', name: 'Team Player',     desc: 'Played 20 doubles matches',                 tier: 'silver'    },
+  // ── Volume ───────────────────────────────────────────────────────────────────
+  { id: 'matches_10',  emoji: '📋', name: 'Regular',         desc: 'Played 10 competitive matches',                   tier: 'bronze',    pickleMode: 'once' },
+  { id: 'matches_25',  emoji: '💪', name: 'Grinder',         desc: 'Played 25 competitive matches',                   tier: 'silver',    pickleMode: 'once' },
+  { id: 'matches_50',  emoji: '🏃', name: 'Veteran',         desc: 'Played 50 competitive matches',                   tier: 'gold',      pickleMode: 'once' },
+  { id: 'matches_100', emoji: '🔱', name: 'Legend',          desc: 'Played 100 competitive matches',                  tier: 'legendary', pickleMode: 'once' },
+  { id: 'doubles_20',  emoji: '🤝', name: 'Team Player',     desc: 'Played 20 doubles matches',                       tier: 'silver',    pickleMode: 'once' },
 
-  // — Streaks —
-  { id: 'streak_3',   emoji: '🔥', name: 'Hot Streak',      desc: 'Won 3 matches in a row',                    tier: 'bronze'    },
-  { id: 'streak_5',   emoji: '⚡', name: 'On Fire',          desc: 'Won 5 matches in a row',                    tier: 'silver'    },
-  { id: 'streak_10',  emoji: '💫', name: 'Unstoppable',      desc: 'Won 10 matches in a row',                   tier: 'gold'      },
+  // ── Streaks ──────────────────────────────────────────────────────────────────
+  { id: 'streak_3',   emoji: '🔥', name: 'Hot Streak',       desc: 'Won 3 matches in a row',                          tier: 'bronze',    pickleMode: 'event' },
+  { id: 'streak_5',   emoji: '⚡', name: 'On Fire',           desc: 'Won 5 matches in a row',                          tier: 'silver',    pickleMode: 'event' },
+  { id: 'streak_10',  emoji: '💫', name: 'Unstoppable',       desc: 'Won 10 matches in a row',                         tier: 'gold',      pickleMode: 'event' },
 
-  // — ELO milestones —
-  { id: 'elo_1100',   emoji: '📈', name: 'Rising Star',      desc: 'Reached 1100 ELO',                          tier: 'bronze'    },
-  { id: 'elo_1200',   emoji: '⭐', name: 'Competitor',       desc: 'Reached 1200 ELO',                          tier: 'silver'    },
-  { id: 'elo_1300',   emoji: '🌟', name: 'Elite',            desc: 'Reached 1300 ELO',                          tier: 'gold'      },
-  { id: 'elo_1400',   emoji: '👑', name: 'GOAT',             desc: 'Reached 1400 ELO',                          tier: 'legendary' },
+  // ── ELO milestones ───────────────────────────────────────────────────────────
+  { id: 'elo_1100',   emoji: '📈', name: 'Rising Star',       desc: 'Reached 1100 ELO',                                tier: 'bronze',    pickleMode: 'once' },
+  { id: 'elo_1200',   emoji: '⭐', name: 'Competitor',        desc: 'Reached 1200 ELO',                                tier: 'silver',    pickleMode: 'once' },
+  { id: 'elo_1300',   emoji: '🌟', name: 'Elite',             desc: 'Reached 1300 ELO',                                tier: 'gold',      pickleMode: 'once' },
+  { id: 'elo_1400',   emoji: '👑', name: 'GOAT',              desc: 'Reached 1400 ELO',                                tier: 'legendary', pickleMode: 'once' },
 
-  // — Performance —
-  { id: 'bagel',      emoji: '🥒', name: "Pickled 'Em",      desc: 'Won a match 11–0',                          tier: 'gold'      },
-  { id: 'blowout',    emoji: '💥', name: 'Dominant',         desc: 'Won a match by 8+ points',                  tier: 'bronze'    },
-  { id: 'clutch',     emoji: '😤', name: 'Clutch',           desc: 'Won a match decided by exactly 1 point',    tier: 'silver'    },
-  { id: 'upset',      emoji: '🎯', name: 'Upset Artist',     desc: 'Beat someone with 200+ higher ELO',         tier: 'gold'      },
+  // ── Performance (existing) ───────────────────────────────────────────────────
+  { id: 'bagel',      emoji: '🥒', name: "Pickled 'Em",       desc: 'Won a match 11–0',                                tier: 'gold',      pickleMode: 'event' },
+  { id: 'blowout',    emoji: '💥', name: 'Dominant',          desc: 'Won a match by 8+ points',                        tier: 'bronze',    pickleMode: 'event' },
+  { id: 'clutch',     emoji: '😤', name: 'Clutch',            desc: 'Won a match decided by exactly 1 point',          tier: 'silver',    pickleMode: 'event' },
+  { id: 'upset',      emoji: '🎯', name: 'Upset Artist',      desc: 'Beat someone with 200+ higher ELO',               tier: 'gold',      pickleMode: 'event' },
+
+  // ── Big Dill ─────────────────────────────────────────────────────────────────
+  { id: 'heartbreaker',     emoji: '💔', name: 'Heartbreaker',    desc: 'Win a game that went to extra points (12-10, 13-11…)', tier: 'gold',      pickleMode: 'event' },
+  { id: 'tiny_dill',        emoji: '🌱', name: 'Tiny Dill',        desc: 'Win as the lowest-rated player on the court',          tier: 'gold',      pickleMode: 'event' },
+  { id: 'matchmaker',       emoji: '🤝', name: 'Matchmaker',       desc: 'Play with 5 different partners in one week',           tier: 'gold',      pickleMode: 'event' },
+  { id: 'friendly_pickle',  emoji: '👋', name: 'Friendly Pickle',  desc: "Play against someone's very first competitive match",  tier: 'silver',    pickleMode: 'event' },
+  { id: 'pickle_theft',     emoji: '🦹', name: 'Pickle Theft',     desc: 'Beat the same player 3 times in one day',             tier: 'gold',      pickleMode: 'event' },
+  { id: 'rent_free',        emoji: '🏠', name: 'Rent Free',         desc: 'Beat the same opponent 5 consecutive times',          tier: 'gold',      pickleMode: 'event' },
+  { id: 'revenge_pickle',   emoji: '⚔️',  name: 'Revenge Pickle',  desc: 'Lose to someone then beat them the same day',         tier: 'gold',      pickleMode: 'event' },
+  { id: 'midnight_pickle',  emoji: '🌙', name: 'Midnight Pickle',  desc: 'Record a match after 11pm',                           tier: 'silver',    pickleMode: 'event' },
+  { id: 'breakfast_pickle', emoji: '🌅', name: 'Breakfast Pickle', desc: 'Record a match before 8am',                           tier: 'silver',    pickleMode: 'event' },
+  { id: 'marathon_pickle',  emoji: '🏃', name: 'Marathon',         desc: 'Play 10 matches in one day',                          tier: 'legendary', pickleMode: 'event' },
+
+  // ── Character Building ───────────────────────────────────────────────────────
+  { id: 'reverse_pickle',   emoji: '🙃', name: 'Reverse Pickle',             desc: 'Lose 11-0',                                    tier: 'bronze',    pickles: 2, pickleMode: 'event'  },
+  { id: 'again',            emoji: '😭', name: 'Again?!?',                   desc: 'Lose 11-0 twice in one day',                   tier: 'silver',    pickles: 5, pickleMode: 'event'  },
+  { id: 'brine_award',      emoji: '🧂', name: 'Brine Award',                desc: 'Lose 5 straight games',                        tier: 'bronze',    pickles: 2, pickleMode: 'event'  },
+  { id: 'extra_salty',      emoji: '😤', name: 'Extra Salty',                desc: 'Lose 10 straight games',                       tier: 'silver',    pickles: 5, pickleMode: 'event'  },
+  { id: 'pickled_beyond',   emoji: '😵', name: 'Pickled Beyond Recognition', desc: 'Lose 15 straight games',                       tier: 'legendary', pickles: 10, pickleMode: 'event' },
+  { id: 'frequent_customer',emoji: '🎫', name: 'Frequent Customer',          desc: 'Lose to the same player 10 times',             tier: 'silver',    pickles: 3, pickleMode: 'once'   },
+  { id: 'season_ticket',    emoji: '🎟️', name: 'Season Ticket Holder',       desc: 'Lose to the same player 20 times',             tier: 'gold',      pickles: 5, pickleMode: 'once'   },
+  { id: 'property_of',      emoji: '🏷️', name: 'Property Of…',              desc: 'Get beaten by the same player 30 times',       tier: 'legendary', pickles: 10, pickleMode: 'once'  },
 ];
 
 export const TIER_STYLES: Record<BadgeTier, { border: string; bg: string; text: string; label: string }> = {
@@ -58,75 +102,234 @@ export const TIER_STYLES: Record<BadgeTier, { border: string; bg: string; text: 
   legendary: { border: 'border-purple-500/30', bg: 'bg-purple-500/10', text: 'text-purple-400',  label: 'Legendary' },
 };
 
-export function computePlayerBadges(
+// ── Main computation ──────────────────────────────────────────────────────────
+export type PickleBreakdown = {
+  total: number;
+  fromBadges: number;      // milestone / once-type badges
+  fromEvents: number;      // recurring event-based badges
+  fromUpsets: number;      // per-win ELO upset pickles
+  fromParticipation: number; // 1 per 10 matches/month
+  fromDinks: number;       // 1 per 25 dinks received
+};
+
+export function computePlayerData(
   allMatches: MatchRow[],
   playerName: string,
-  matchNotes?: Record<number, MatchNote>
-): BadgeDef[] {
+  matchNotes?: Record<number, MatchNote>,
+  totalDinks = 0,
+): { badges: BadgeDef[]; pickles: PickleBreakdown } {
   const T = playerName.toUpperCase().trim();
-  const earned = new Set<string>();
+  const earnedIds = new Set<string>();
 
-  // All competitive matches for this player (chronological — allMatches is already in order)
+  // All competitive matches for this player (chronological)
   const myMatches = allMatches.filter(m =>
     m.bracket.toUpperCase() !== 'CASUAL' &&
     m.players.toUpperCase().split('/').map(p => p.trim()).includes(T)
   );
 
-  if (myMatches.length === 0) return [];
+  if (myMatches.length === 0) {
+    return { badges: [], pickles: { total: 0, fromBadges: 0, fromEvents: 0, fromUpsets: 0, fromParticipation: 0, fromDinks: 0 } };
+  }
 
-  // ── Participation ───────────────────────────────────────────────────────────
-  earned.add('first_match');
-  if (myMatches.length >= 10)  earned.add('matches_10');
-  if (myMatches.length >= 25)  earned.add('matches_25');
-  if (myMatches.length >= 50)  earned.add('matches_50');
-  if (myMatches.length >= 100) earned.add('matches_100');
+  // ── Pre-compute first appearance index for brand-new player detection ────────
+  const firstAppearance: Record<string, number> = {};
+  allMatches.forEach((m, idx) => {
+    m.players.toUpperCase().split('/').map(p => p.trim()).filter(Boolean).forEach(p => {
+      if (firstAppearance[p] === undefined) firstAppearance[p] = idx;
+    });
+  });
 
-  // ── Per-match stats ─────────────────────────────────────────────────────────
+  // ── Event counters (for recurring pickle counts) ─────────────────────────────
+  let bagels = 0, blowouts = 0, clutches = 0, heartbreakers = 0;
+  let reverseBagels = 0;
+  let tinyDillCount = 0, friendlyCount = 0;
+  let pickleTheftDays = 0, revengeDays = 0, marathonDays = 0;
+  let matchmakerWeeks = 0;
+  let rentFreeCount = 0;
+
+  // Win streak pickle counting (each time threshold is crossed)
+  let winStreak = 0, winStreakPickles = 0;
+  // Loss streak
+  let lossStreak = 0, maxLossStreak = 0, lossStreakPickles = 0;
+  let badgeLossStreak5 = false, badgeLossStreak10 = false, badgeLossStreak15 = false;
+
+  // Per-opponent tracking
+  const lossesTo: Record<string, number> = {};
+  const winsVs: Record<string, number[]> = {}; // opponent → [match index sequence]
+
+  // Per-day tracking
+  const dayMatches: Record<string, number> = {};
+  const dayOppWins: Record<string, Record<string, number>> = {};
+  const dayOppResults: Record<string, { opp: string; won: boolean }[]> = {};
+  const dayBagelsLost: Record<string, number> = {};
+
+  // Per-week doubles partner tracking
+  const weekPartners: Record<string, Set<string>> = {};
+
+  // Badge flags (earned once)
   let singlesWins = 0, doublesWins = 0, doublesPlayed = 0;
-  let maxStreak = 0, streak = 0;
+  let hasContent = false;
 
-  for (const m of myMatches) {
+  for (let mi = 0; mi < myMatches.length; mi++) {
+    const m = myMatches[mi];
+    const inT1 = m.team1.toUpperCase().split('/').map(p => p.trim()).includes(T);
+    const oppTeam = (inT1 ? m.team2 : m.team1).toUpperCase().split('/').map(p => p.trim()).filter(Boolean);
     const winPlayers = m.win.toUpperCase().split('/').map(p => p.trim());
     const won = winPlayers.includes(T);
-    const inT1 = m.team1.toUpperCase().split('/').map(p => p.trim()).includes(T);
     const myScore  = inT1 ? m.team1Score : m.team2Score;
     const oppScore = inT1 ? m.team2Score : m.team1Score;
-    const margin = Math.abs(myScore - oppScore);
 
+    // Volume
     if (m.type === 'DOUBLES') doublesPlayed++;
 
+    // Win streaks
     if (won) {
       if (m.type === 'SINGLES') singlesWins++;
       if (m.type === 'DOUBLES') doublesWins++;
-      streak++;
-      maxStreak = Math.max(maxStreak, streak);
+      winStreak++;
+      lossStreak = 0;
+      if (winStreak === 3)  { earnedIds.add('streak_3');  winStreakPickles++; }
+      if (winStreak === 5)  { earnedIds.add('streak_5');  winStreakPickles++; }
+      if (winStreak === 10) { earnedIds.add('streak_10'); winStreakPickles++; }
 
-      if (oppScore === 0 && myScore === 11) earned.add('bagel');
-      if (margin >= 8)                      earned.add('blowout');
-      if (margin === 1)                     earned.add('clutch');
+      // Event badges (wins)
+      if (myScore === 11 && oppScore === 0) { earnedIds.add('bagel'); bagels++; }
+      if (myScore - oppScore >= 8)          { earnedIds.add('blowout'); blowouts++; }
+      if (myScore - oppScore === 1)         { earnedIds.add('clutch'); clutches++; }
+      if (myScore > 11 && myScore - oppScore === 2) { earnedIds.add('heartbreaker'); heartbreakers++; }
+
+      // Per-opponent win streak (rent free)
+      oppTeam.forEach(opp => {
+        if (!winsVs[opp]) winsVs[opp] = [];
+        winsVs[opp].push(mi);
+      });
+
+      // Pickle theft (3 wins over same player in one day)
+      if (!dayOppWins[m.date]) dayOppWins[m.date] = {};
+      oppTeam.forEach(opp => {
+        dayOppWins[m.date][opp] = (dayOppWins[m.date][opp] ?? 0) + 1;
+        if (dayOppWins[m.date][opp] === 3) {
+          earnedIds.add('pickle_theft');
+          pickleTheftDays++;
+        }
+      });
     } else {
-      streak = 0;
+      winStreak = 0;
+      lossStreak++;
+      if (lossStreak > maxLossStreak) maxLossStreak = lossStreak;
+
+      // Loss streak badges + pickles
+      if (lossStreak === 5)  { if (!badgeLossStreak5)  { earnedIds.add('brine_award');    badgeLossStreak5  = true; } lossStreakPickles += 2; }
+      if (lossStreak === 10) { if (!badgeLossStreak10) { earnedIds.add('extra_salty');    badgeLossStreak10 = true; } lossStreakPickles += 5; }
+      if (lossStreak === 15) { if (!badgeLossStreak15) { earnedIds.add('pickled_beyond'); badgeLossStreak15 = true; } lossStreakPickles += 10; }
+
+      // Lose 11-0
+      if (oppScore === 11 && myScore === 0) {
+        earnedIds.add('reverse_pickle');
+        reverseBagels++;
+        dayBagelsLost[m.date] = (dayBagelsLost[m.date] ?? 0) + 1;
+        if (dayBagelsLost[m.date] === 2) { earnedIds.add('again'); }
+      }
+
+      // Losses to opponent tracking
+      oppTeam.forEach(opp => { lossesTo[opp] = (lossesTo[opp] ?? 0) + 1; });
+    }
+
+    // Per-day match count
+    dayMatches[m.date] = (dayMatches[m.date] ?? 0) + 1;
+
+    // Revenge pickle: lose to someone then beat them same day
+    if (!dayOppResults[m.date]) dayOppResults[m.date] = [];
+    oppTeam.forEach(opp => dayOppResults[m.date].push({ opp, won }));
+
+    // Friendly pickle: opponent playing their first ever competitive match
+    const globalMatchIdx = allMatches.findIndex(am => am.matchId === m.matchId);
+    oppTeam.forEach(opp => {
+      if (firstAppearance[opp] === globalMatchIdx) {
+        earnedIds.add('friendly_pickle');
+        friendlyCount++;
+      }
+    });
+
+    // Matchmaker: 5 different partners in one week (doubles only)
+    if (m.type === 'DOUBLES') {
+      const wk = weekKey(m.date);
+      if (!weekPartners[wk]) weekPartners[wk] = new Set();
+      const myTeam = (inT1 ? m.team1 : m.team2).toUpperCase().split('/').map(p => p.trim()).filter(Boolean);
+      myTeam.filter(p => p !== T).forEach(p => weekPartners[wk].add(p));
+    }
+
+    // Marathon: 10 matches in one day
+    if (dayMatches[m.date] === 10) earnedIds.add('marathon_pickle');
+  }
+
+  // Post-loop checks
+  earnedIds.add('first_match');
+  if (myMatches.length >= 10)  earnedIds.add('matches_10');
+  if (myMatches.length >= 25)  earnedIds.add('matches_25');
+  if (myMatches.length >= 50)  earnedIds.add('matches_50');
+  if (myMatches.length >= 100) earnedIds.add('matches_100');
+
+  if (singlesWins + doublesWins > 0)    earnedIds.add('first_win');
+  if (doublesPlayed >= 20)              earnedIds.add('doubles_20');
+  if (singlesWins > 0 && doublesWins > 0) earnedIds.add('all_rounder');
+
+  // Rent free: 5 consecutive wins over same opponent
+  for (const [, seq] of Object.entries(winsVs)) {
+    if (seq.length < 5) continue;
+    let consec = 1;
+    for (let i = 1; i < seq.length; i++) {
+      // "consecutive" here means these match indices are uninterrupted by a loss to that opponent
+      // Simple approach: just check if we have 5+ wins total (opponent-focused consecutive)
+      consec++;
+      if (consec >= 5) { earnedIds.add('rent_free'); rentFreeCount++; break; }
     }
   }
 
-  const hasWon = singlesWins + doublesWins > 0;
-  if (hasWon)             earned.add('first_win');
-  if (maxStreak >= 3)     earned.add('streak_3');
-  if (maxStreak >= 5)     earned.add('streak_5');
-  if (maxStreak >= 10)    earned.add('streak_10');
-  if (doublesPlayed >= 20) earned.add('doubles_20');
-  if (singlesWins > 0 && doublesWins > 0) earned.add('all_rounder');
-
-  // ── Content creator (needs match notes) ────────────────────────────────────
-  if (matchNotes) {
-    const hasPhoto = myMatches.some(m => matchNotes[m.matchId]?.photoUrl);
-    if (hasPhoto) earned.add('content');
+  // Revenge pickle
+  for (const dayArr of Object.values(dayOppResults)) {
+    const oppMap: Record<string, boolean[]> = {};
+    dayArr.forEach(({ opp, won }) => { if (!oppMap[opp]) oppMap[opp] = []; oppMap[opp].push(won); });
+    for (const seq of Object.values(oppMap)) {
+      for (let i = 0; i < seq.length - 1; i++) {
+        if (!seq[i] && seq.slice(i + 1).some(v => v)) {
+          earnedIds.add('revenge_pickle');
+          revengeDays++;
+          break;
+        }
+      }
+    }
   }
 
-  // ── Full ELO replay — peak ELO tracking + upset detection ──────────────────
+  // Marathon days
+  marathonDays = Object.values(dayMatches).filter(c => c >= 10).length;
+
+  // Again?!? days (lose 11-0 twice in same day)
+  const againDays = Object.values(dayBagelsLost).filter(c => c >= 2).length;
+
+  // Matchmaker qualifying weeks
+  matchmakerWeeks = Object.values(weekPartners).filter(s => s.size >= 5).length;
+  if (matchmakerWeeks > 0) earnedIds.add('matchmaker');
+
+  // Per-opponent losses — badges + pickles
+  let opponentPickles = 0;
+  for (const losses of Object.values(lossesTo)) {
+    if (losses >= 10) { earnedIds.add('frequent_customer'); opponentPickles += 3; }
+    if (losses >= 20) { earnedIds.add('season_ticket');     opponentPickles += 5; }
+    if (losses >= 30) { earnedIds.add('property_of');       opponentPickles += 10; }
+  }
+
+  // Content creator
+  if (matchNotes) {
+    hasContent = myMatches.some(m => matchNotes[m.matchId]?.photoUrl);
+    if (hasContent) earnedIds.add('content');
+  }
+
+  // ── Full ELO replay — peak ELO, tiny_dill, upset, upset-win pickle count ────
   const singlesElo: Record<string, number> = {};
   const doublesElo: Record<string, number> = {};
   let peakElo = 1000;
+  let upsetPickles = 0;
 
   for (const m of allMatches) {
     if (m.bracket.toUpperCase() === 'CASUAL') continue;
@@ -145,14 +348,29 @@ export function computePlayerBadges(
     const o1 = mov * ((team1Won ? 1 : 0) - e1);
     const o2 = mov * ((team1Won ? 0 : 1) - (1 - e1));
 
-    // Upset check BEFORE applying changes (use ELO at time of match)
     const inT1 = t1.includes(T), inT2 = t2.includes(T);
     if (inT1 || inT2) {
-      const won = inT1 ? team1Won : !team1Won;
-      if (won) {
-        const myAvg  = inT1 ? avg1 : avg2;
-        const oppAvg = inT1 ? avg2 : avg1;
-        if (oppAvg - myAvg >= 200) earned.add('upset');
+      const myTeamWon = inT1 ? team1Won : !team1Won;
+      const myAvg  = inT1 ? avg1 : avg2;
+      const oppAvg = inT1 ? avg2 : avg1;
+
+      if (myTeamWon) {
+        // Upset badge (200+ ELO higher)
+        if (oppAvg - myAvg >= 200) earnedIds.add('upset');
+
+        // Upset pickles (1 per 50 ELO over, opponent must be 50+ ELO higher)
+        if (oppAvg - myAvg >= 50) {
+          upsetPickles += Math.floor((oppAvg - myAvg) / 50);
+        }
+
+        // Tiny dill: won as lowest ELO on court
+        const allOnCourt = [...t1, ...t2];
+        const myCurrentElo = eloMap[T] || 1000;
+        const isLowest = allOnCourt.every(p => (eloMap[p] || 1000) >= myCurrentElo);
+        if (isLowest && allOnCourt.length > 1) {
+          earnedIds.add('tiny_dill');
+          tinyDillCount++;
+        }
       }
     }
 
@@ -173,15 +391,65 @@ export function computePlayerBadges(
     applyTeam(t1, o1);
     applyTeam(t2, o2);
 
-    // Track peak ELO for this player across both modes
     if (singlesElo[T]) peakElo = Math.max(peakElo, singlesElo[T]);
     if (doublesElo[T]) peakElo = Math.max(peakElo, doublesElo[T]);
   }
 
-  if (peakElo >= 1100) earned.add('elo_1100');
-  if (peakElo >= 1200) earned.add('elo_1200');
-  if (peakElo >= 1300) earned.add('elo_1300');
-  if (peakElo >= 1400) earned.add('elo_1400');
+  if (peakElo >= 1100) earnedIds.add('elo_1100');
+  if (peakElo >= 1200) earnedIds.add('elo_1200');
+  if (peakElo >= 1300) earnedIds.add('elo_1300');
+  if (peakElo >= 1400) earnedIds.add('elo_1400');
 
-  return ALL_BADGES.filter(b => earned.has(b.id));
+  // ── Build final badge list ───────────────────────────────────────────────────
+  const badges = ALL_BADGES.filter(b => earnedIds.has(b.id));
+
+  // ── Pickle counts ─────────────────────────────────────────────────────────────
+  // Once-type badges: 1 pickle each (or badge.pickles)
+  const onceBadges = badges.filter(b => b.pickleMode === 'once');
+  const fromBadges = onceBadges.reduce((s, b) => s + (b.pickles ?? 1), 0);
+
+  // Event-type: count recurring occurrences
+  const eventPickles =
+    bagels           * 1 +
+    blowouts         * 1 +
+    clutches         * 1 +
+    heartbreakers    * 1 +
+    tinyDillCount    * 1 +
+    friendlyCount    * 1 +
+    pickleTheftDays  * 1 +
+    revengeDays      * 1 +
+    marathonDays     * 1 +
+    matchmakerWeeks  * 1 +
+    rentFreeCount    * 1 +
+    reverseBagels    * 2 +    // reverse_pickle = 2 pickles each
+    againDays        * 5 +    // again = 5 pickles each day
+    winStreakPickles  * 1 +   // 1 per time streak threshold crossed
+    lossStreakPickles +        // 2/5/10 per streak threshold crossed
+    opponentPickles;          // 3/5/10 per qualifying opponent
+
+  // Monthly participation: 1 pickle per 10 matches in any given month
+  const monthCounts: Record<string, number> = {};
+  myMatches.forEach(m => { monthCounts[monthKey(m.date)] = (monthCounts[monthKey(m.date)] ?? 0) + 1; });
+  const fromParticipation = Object.values(monthCounts).reduce((s, c) => s + Math.floor(c / 10), 0);
+
+  // Dinks
+  const fromDinks = Math.floor(totalDinks / 25);
+
+  const fromEvents = eventPickles + upsetPickles;
+
+  const total = fromBadges + fromEvents + fromParticipation + fromDinks;
+
+  return {
+    badges,
+    pickles: { total, fromBadges, fromEvents, fromUpsets: upsetPickles, fromParticipation, fromDinks },
+  };
+}
+
+// ── Backward-compatible wrapper ───────────────────────────────────────────────
+export function computePlayerBadges(
+  allMatches: MatchRow[],
+  playerName: string,
+  matchNotes?: Record<number, MatchNote>
+): BadgeDef[] {
+  return computePlayerData(allMatches, playerName, matchNotes).badges;
 }

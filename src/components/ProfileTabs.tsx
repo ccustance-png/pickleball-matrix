@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import type { MatchRow, MatchNote } from '@/lib/sheets';
 import MatchActivityCard from './MatchActivityCard';
 import MatchHistory from './MatchHistory';
 import BadgesGrid from './BadgesGrid';
-import { computePlayerBadges } from '@/lib/badges';
+import type { BadgeDef, PickleBreakdown } from '@/lib/badges';
 
 function formatValue(v: string): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -56,8 +56,9 @@ type Props = {
   doublesTotal: number;
   recentMatches: MatchRow[];
   allMatches: MatchRow[];
-  allMatchesForBadges: MatchRow[];
   matchNotes: Record<number, MatchNote>;
+  earnedBadges: BadgeDef[];
+  pickles: PickleBreakdown;
 };
 
 type Tab = 'stats' | 'history' | 'activities' | 'badges';
@@ -65,14 +66,10 @@ type Tab = 'stats' | 'history' | 'activities' | 'badges';
 export default function ProfileTabs({
   name, singlesStats, doublesStats,
   singlesWins, singlesTotal, doublesWins, doublesTotal,
-  recentMatches, allMatches, allMatchesForBadges, matchNotes,
+  recentMatches, allMatches, matchNotes,
+  earnedBadges, pickles,
 }: Props) {
   const [tab, setTab] = useState<Tab>('stats');
-
-  const earnedBadges = useMemo(
-    () => computePlayerBadges(allMatchesForBadges, name, matchNotes),
-    [allMatchesForBadges, name, matchNotes]
-  );
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'stats', label: 'Stats' },
@@ -140,9 +137,43 @@ export default function ProfileTabs({
         <MatchHistory matches={recentMatches} name={name} />
       )}
 
-      {/* Badges */}
+      {/* Badges + Pickle Jar */}
       {tab === 'badges' && (
-        <BadgesGrid earned={earnedBadges} showAll />
+        <div className="space-y-6">
+          {/* Pickle Jar */}
+          <div className="bg-slate-900 border border-lime-500/20 rounded-xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Pickle Jar</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-4xl">🥒</span>
+                  <span className="text-5xl font-black text-lime-400 tabular-nums">{pickles.total}</span>
+                  <span className="text-lg text-slate-500 font-semibold">pickles</span>
+                </div>
+              </div>
+              {pickles.total > 0 && (
+                <div className="text-right space-y-1.5">
+                  {pickles.fromBadges > 0 && (
+                    <p className="text-xs text-slate-500">🎖️ <span className="text-slate-300 font-semibold">{pickles.fromBadges}</span> from milestones</p>
+                  )}
+                  {pickles.fromEvents > 0 && (
+                    <p className="text-xs text-slate-500">⚡ <span className="text-slate-300 font-semibold">{pickles.fromEvents}</span> from achievements</p>
+                  )}
+                  {pickles.fromParticipation > 0 && (
+                    <p className="text-xs text-slate-500">📅 <span className="text-slate-300 font-semibold">{pickles.fromParticipation}</span> from participation</p>
+                  )}
+                  {pickles.fromDinks > 0 && (
+                    <p className="text-xs text-slate-500">🏓 <span className="text-slate-300 font-semibold">{pickles.fromDinks}</span> from dinks</p>
+                  )}
+                </div>
+              )}
+            </div>
+            {pickles.total === 0 && (
+              <p className="text-sm text-slate-600 mt-3">Start earning pickles by completing achievements, beating stronger players, and getting dinks on your activities.</p>
+            )}
+          </div>
+          <BadgesGrid earned={earnedBadges} showAll />
+        </div>
       )}
 
       {/* Activities */}
