@@ -42,14 +42,29 @@ function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
     const exp1 = expected(avg1, avg2);
     const win1 = m.win.trim().toUpperCase() === m.team1.trim().toUpperCase() ? 1 : 0;
 
-    team1Players.forEach((p) => {
-      const weight = avg1 > 0 ? elo[p] / avg1 : 1;
-      elo[p] += K * weight * (win1 - exp1);
-    });
-    team2Players.forEach((p) => {
-      const weight = avg2 > 0 ? elo[p] / avg2 : 1;
-      elo[p] += K * weight * ((1 - win1) - (1 - exp1));
-    });
+    const applyDoublesChange = (players: string[], baseChange: number) => {
+      if (players.length < 2) {
+        players.forEach((p) => { elo[p] += baseChange; });
+        return;
+      }
+      const elos = players.map((p) => elo[p] || 1000);
+      const hi = Math.max(...elos);
+      const lo = Math.min(...elos);
+      const proportion = lo > 0 ? hi / lo : 1;
+      players.forEach((p) => {
+        const playerElo = elo[p] || 1000;
+        if (playerElo >= hi) {
+          // Higher rated: base change unchanged
+          elo[p] += baseChange;
+        } else {
+          // Lower rated: more gain on win, less loss on defeat
+          elo[p] += baseChange > 0 ? baseChange * proportion : baseChange / proportion;
+        }
+      });
+    };
+
+    applyDoublesChange(team1Players, K * (win1 - exp1));
+    applyDoublesChange(team2Players, K * ((1 - win1) - (1 - exp1)));
   }
 
   return Object.entries(eloAtCutoff)
