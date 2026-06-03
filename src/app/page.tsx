@@ -138,6 +138,9 @@ export default async function HomePage() {
         + Log Session
       </Link>
 
+      {/* ELO Rankings */}
+      <EloTabs singles={elo.singles} doubles={elo.doubles} singlesWL={singlesWL} doublesWL={doublesWL} />
+
       {/* Nail Biters */}
       {nailBiters.length > 0 && (
         <div>
@@ -192,9 +195,6 @@ export default async function HomePage() {
 
       {/* Hot Right Now */}
       <HotRightNow singles={hotSingles} doubles={hotDoubles} />
-
-      {/* ELO Rankings */}
-      <EloTabs singles={elo.singles} doubles={elo.doubles} singlesWL={singlesWL} doublesWL={doublesWL} />
     </div>
   );
 }
