@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { useState, useEffect, useRef } from 'react';
+import SearchModal from './SearchModal';
 
 const links = [
   { href: '/', label: 'Home' },
@@ -21,6 +22,7 @@ export default function Nav() {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [myPlayer, setMyPlayer] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Fetch the claimed player name for the signed-in user
   useEffect(() => {
@@ -46,6 +48,7 @@ export default function Nav() {
   useEffect(() => { setOpen(false); }, [pathname]);
 
   return (
+    <>
     <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
         {/* Logo */}
@@ -53,6 +56,19 @@ export default function Nav() {
           <Image src="/logo.png" alt="Pickleball ELO" width={32} height={32} className="rounded-md" />
           <span>Pickleball ELO</span>
         </Link>
+
+        {/* Search + Hamburger */}
+        <div className="flex items-center gap-2">
+        {/* Search button */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-slate-100 transition-colors"
+          aria-label="Search"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+        </button>
 
         {/* Hamburger button */}
         <div className="relative" ref={menuRef}>
@@ -149,7 +165,11 @@ export default function Nav() {
             </div>
           )}
         </div>
+        </div>{/* end flex wrapper */}
       </div>
     </header>
+
+    {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
+    </>
   );
 }

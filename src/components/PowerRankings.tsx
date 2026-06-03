@@ -148,7 +148,8 @@ type Props = {
 };
 
 export default function PowerRankings({ matches, singlesElo, doublesElo, singlesWL, doublesWL }: Props) {
-  const [type, setType] = useState<'SINGLES' | 'DOUBLES'>('SINGLES');
+  const [type, setType]       = useState<'SINGLES' | 'DOUBLES'>('SINGLES');
+  const [filter, setFilter]   = useState('');
 
   const rankings = useMemo(
     () => computePowerRankings(
@@ -159,6 +160,10 @@ export default function PowerRankings({ matches, singlesElo, doublesElo, singles
     ),
     [matches, type, singlesElo, doublesElo, singlesWL, doublesWL]
   );
+
+  const visible = filter.trim()
+    ? rankings.filter(r => r.name.toLowerCase().includes(filter.toLowerCase()))
+    : rankings;
 
   return (
     <div>
@@ -183,11 +188,27 @@ export default function PowerRankings({ matches, singlesElo, doublesElo, singles
         </div>
       </div>
 
+      {/* Search filter */}
+      <div className="relative mb-3">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+        </svg>
+        <input
+          type="text"
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+          placeholder="Filter by player…"
+          className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30"
+        />
+      </div>
+
       {rankings.length === 0 ? (
         <p className="text-slate-500 text-sm py-8 text-center">No data yet.</p>
+      ) : visible.length === 0 ? (
+        <p className="text-slate-500 text-sm py-8 text-center">No player matches &ldquo;{filter}&rdquo;</p>
       ) : (
         <div className="rounded-xl border border-slate-800 overflow-hidden divide-y divide-slate-800">
-          {rankings.map((p, i) => (
+          {visible.map((p, i) => (
             <div key={p.name} className="bg-slate-950 hover:bg-slate-900 transition-colors px-4 py-3.5">
               <div className="flex items-center gap-3">
 

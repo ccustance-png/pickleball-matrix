@@ -1,9 +1,38 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import type { MatchRow } from '@/lib/sheets';
 
 export default function MatchHistory({ matches, name }: { matches: MatchRow[]; name: string }) {
+  const [filter, setFilter] = useState('');
   if (matches.length === 0) return <p className="text-slate-500 text-sm">No matches yet.</p>;
+
+  const visible = filter.trim()
+    ? matches.filter(m =>
+        m.win.toLowerCase().includes(filter.toLowerCase()) ||
+        m.loss.toLowerCase().includes(filter.toLowerCase()) ||
+        m.date.includes(filter) ||
+        m.type.toLowerCase().includes(filter.toLowerCase())
+      )
+    : matches;
+
   return (
+    <div className="space-y-3">
+      {/* Search */}
+      <div className="relative">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+        </svg>
+        <input
+          type="text"
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+          placeholder="Filter by opponent, date, type…"
+          className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30"
+        />
+      </div>
+
     <div className="rounded-xl border border-slate-800 overflow-hidden">
       <table className="w-full text-sm">
         <thead>
@@ -16,7 +45,7 @@ export default function MatchHistory({ matches, name }: { matches: MatchRow[]; n
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-800">
-          {matches.map((m) => {
+          {visible.map((m) => {
             const isWinner = m.win.split('/').map((p) => p.trim()).includes(name);
             const oppTeam = isWinner ? m.loss : m.win;
             const myScore = m.team1.includes(name) ? m.team1Score : m.team2Score;
@@ -50,6 +79,10 @@ export default function MatchHistory({ matches, name }: { matches: MatchRow[]; n
           })}
         </tbody>
       </table>
+    </div>
+    {visible.length === 0 && filter && (
+      <p className="text-slate-500 text-sm text-center py-6">No matches found for &ldquo;{filter}&rdquo;</p>
+    )}
     </div>
   );
 }
