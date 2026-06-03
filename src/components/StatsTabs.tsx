@@ -300,11 +300,11 @@ export default function StatsTabs({ matches, singlesElo, doublesElo, players }: 
         fSum += fIsT1 ? m.team1Score : m.team2Score;
         dSum += fIsT1 ? m.team2Score : m.team1Score;
       });
-      const fa = Math.round(fSum / favWins.length);
-      const da = Math.round(dSum / favWins.length);
+      const fa = Math.min(11, Math.round(fSum / favWins.length));
+      const da = Math.min(11, Math.round(dSum / favWins.length));
       scorePred = p1Favoured ? { p1: fa, p2: da } : { p1: da, p2: fa };
     } else {
-      const loser = Math.max(0, Math.round(11 * (1 - favWinPct) / favWinPct * 0.85));
+      const loser = Math.min(11, Math.max(0, Math.round(11 * (1 - favWinPct) / favWinPct * 0.85)));
       scorePred = p1Favoured ? { p1: 11, p2: loser } : { p1: loser, p2: 11 };
     }
 
