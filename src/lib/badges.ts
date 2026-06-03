@@ -134,7 +134,7 @@ export function computePlayerData(
   playerName: string,
   matchNotes?: Record<number, MatchNote>,
   totalDinks = 0,
-): { badges: BadgeDef[]; pickles: PickleBreakdown; pickleLog: PickleEvent[] } {
+): { badges: BadgeDef[]; pickles: PickleBreakdown; pickleLog: PickleEvent[]; eloChanges: Record<number, number> } {
   const T = playerName.toUpperCase().trim();
   const earnedIds = new Set<string>();
   const log: PickleEvent[] = [];
@@ -150,7 +150,7 @@ export function computePlayerData(
   );
 
   if (myMatches.length === 0) {
-    return { badges: [], pickles: { total: 0, fromBadges: 0, fromEvents: 0, fromUpsets: 0, fromParticipation: 0, fromDinks: 0 }, pickleLog: [] };
+    return { badges: [], pickles: { total: 0, fromBadges: 0, fromEvents: 0, fromUpsets: 0, fromParticipation: 0, fromDinks: 0 }, pickleLog: [], eloChanges: {} };
   }
 
   // ── Pre-compute first appearance index for brand-new player detection ────────
@@ -409,6 +409,7 @@ export function computePlayerData(
   let peakElo = 1000;
   let upsetPickles = 0;
   const eloMilestoneDates: Record<number, string> = {};
+  const eloChanges: Record<number, number> = {}; // matchId → ELO delta for this player
 
   for (const m of allMatches) {
     if (m.bracket.toUpperCase() === 'CASUAL') continue;
@@ -428,6 +429,9 @@ export function computePlayerData(
     const o2 = mov * ((team1Won ? 0 : 1) - (1 - e1));
 
     const inT1 = t1.includes(T), inT2 = t2.includes(T);
+    // Capture ELO before changes so we can compute delta after
+    const myEloBefore = (inT1 || inT2) ? (eloMap[T] || 1000) : 0;
+
     if (inT1 || inT2) {
       const myTeamWon = inT1 ? team1Won : !team1Won;
       const myAvg  = inT1 ? avg1 : avg2;
@@ -472,6 +476,11 @@ export function computePlayerData(
     };
     applyTeam(t1, o1);
     applyTeam(t2, o2);
+
+    // Record per-match ELO delta for this player
+    if (inT1 || inT2) {
+      eloChanges[m.matchId] = Math.round((eloMap[T] || 1000) - myEloBefore);
+    }
 
     // Track ELO milestone dates
     const myElo = (singlesElo[T] || 0) > (doublesElo[T] || 0) ? singlesElo[T] : doublesElo[T];
@@ -546,6 +555,7 @@ export function computePlayerData(
     badges,
     pickles: { total, fromBadges, fromEvents, fromUpsets: upsetPickles, fromParticipation, fromDinks },
     pickleLog: sortedLog,
+    eloChanges,
   };
 }
 

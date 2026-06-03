@@ -62,6 +62,7 @@ type Props = {
   matchNotes: Record<number, MatchNote>;
   earnedBadges: BadgeDef[];
   pickles: PickleBreakdown;
+  eloChanges?: Record<number, number>;
 };
 
 type Tab = 'stats' | 'history' | 'activities' | 'badges';
@@ -70,7 +71,7 @@ export default function ProfileTabs({
   name, singlesStats, doublesStats,
   singlesWins, singlesTotal, doublesWins, doublesTotal,
   recentMatches, allMatches, matchNotes,
-  earnedBadges, pickles,
+  earnedBadges, pickles, eloChanges,
 }: Props) {
   const [tab, setTab] = useState<Tab>('stats');
 
@@ -153,7 +154,7 @@ export default function ProfileTabs({
 
       {/* History */}
       {tab === 'history' && (
-        <MatchHistory matches={recentMatches} name={name} />
+        <MatchHistory matches={recentMatches} name={name} eloChanges={eloChanges} />
       )}
 
       {/* Badges + Pickle Jar */}

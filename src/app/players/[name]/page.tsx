@@ -45,7 +45,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
   if (playerMatches.length === 0 && matches.length > 0) return notFound();
 
   const matchNotes = await getMatchNotes(playerMatches.map((m) => m.matchId)).catch(() => ({}));
-  const { badges: earnedBadges, pickles, pickleLog } = computePlayerData(matches, name, matchNotes);
+  const { badges: earnedBadges, pickles, pickleLog, eloChanges } = computePlayerData(matches, name, matchNotes);
 
   const isClaimed = !!profile?.googleEmail;
   const isOwner = !!session?.user?.email && session.user.email === profile?.googleEmail;
@@ -148,6 +148,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
         matchNotes={matchNotes}
         earnedBadges={earnedBadges}
         pickles={pickles}
+        eloChanges={eloChanges}
       />
     </div>
   );

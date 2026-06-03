@@ -13,7 +13,7 @@ function movMult(margin: number, exp1: number) {
   return 1 + margin * 0.1 * c;
 }
 
-type HistoryPoint = { date: string; elo: number; win: boolean; opp: string };
+type HistoryPoint = { date: string; elo: number; eloDelta: number; win: boolean; opp: string };
 
 function replayHistory(matches: MatchRow[], target: string, type: 'SINGLES' | 'DOUBLES') {
   const T = target.toUpperCase().trim();
@@ -35,6 +35,10 @@ function replayHistory(matches: MatchRow[], target: string, type: 'SINGLES' | 'D
     const o1 = mov * ((team1Won ? 1 : 0) - e1);
     const o2 = mov * ((team1Won ? 0 : 1) - (1 - e1));
 
+    // Capture ELO before applying changes
+    const inT1 = t1.includes(T), inT2 = t2.includes(T);
+    const eloBefore = (inT1 || inT2) ? (elo[T] || 1000) : 0;
+
     const applyTeam = (team: string[], outcome: number) => {
       if (team.length < 2) {
         team.forEach(p => { elo[p] = (elo[p] || 1000) + dynK(elo[p] || 1000) * outcome; });
@@ -52,11 +56,11 @@ function replayHistory(matches: MatchRow[], target: string, type: 'SINGLES' | 'D
     applyTeam(t1, o1);
     applyTeam(t2, o2);
 
-    const inT1 = t1.includes(T), inT2 = t2.includes(T);
     if (inT1 || inT2) {
       history.push({
         date: m.date,
         elo: Math.round(elo[T] || 1000),
+        eloDelta: Math.round((elo[T] || 1000) - eloBefore),
         win: inT1 ? team1Won : !team1Won,
         opp: (inT1 ? t2 : t1).join('/'),
       });
@@ -486,16 +490,22 @@ export default function StatsTabs({ matches, singlesElo, doublesElo, players }: 
                     <p className="text-xs text-slate-500">Win Rate</p>
                   </div>
                 </div>
-                {/* Recent form dots */}
+                {/* Recent form dots with ELO delta */}
                 <div>
                   <p className="text-xs text-slate-500 mb-1.5">Recent form (last {insights.recentForm.length})</p>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-end gap-1.5 overflow-x-auto pb-1">
                     {insights.recentForm.map((h, i) => (
-                      <div key={i} title={`${h.win ? 'W' : 'L'} vs ${h.opp}`}
-                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                      <div key={i} className="flex flex-col items-center gap-0.5 shrink-0" title={`vs ${h.opp}`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                           h.win ? 'bg-lime-500/20 text-lime-400' : 'bg-red-500/10 text-red-400'
                         }`}>
-                        {h.win ? 'W' : 'L'}
+                          {h.win ? 'W' : 'L'}
+                        </div>
+                        <span className={`text-[10px] font-bold tabular-nums leading-none ${
+                          h.eloDelta >= 0 ? 'text-lime-500' : 'text-red-500'
+                        }`}>
+                          {h.eloDelta >= 0 ? '+' : ''}{h.eloDelta}
+                        </span>
                       </div>
                     ))}
                   </div>
