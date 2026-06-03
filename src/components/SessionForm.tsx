@@ -158,6 +158,7 @@ export default function SessionForm() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [playerList, setPlayerList] = useState<string[]>([]);
+  const [myName, setMyName]         = useState<string | null>(null);
   const [date, setDate] = useState(today());
   const [games, setGames] = useState<GameEntry[]>([newGame()]);
 
@@ -172,10 +173,22 @@ export default function SessionForm() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/players')
-      .then((r) => r.json())
-      .then((data: { name: string }[]) => setPlayerList(data.map((p) => p.name)))
-      .catch(() => {});
+    // Fetch player list and current user in parallel
+    Promise.all([
+      fetch('/api/players').then(r => r.json()).catch(() => []),
+      fetch('/api/me').then(r => r.json()).catch(() => ({ player: null })),
+    ]).then(([players, me]) => {
+      const list = (players as { name: string }[]).map(p => p.name);
+      setPlayerList(list);
+
+      // Auto-populate the signed-in user into the first player slot
+      if (me?.player) {
+        setMyName(me.player);
+        setGames(prev => prev.map((g, i) =>
+          i === 0 ? { ...g, t1p1: me.player } : g
+        ));
+      }
+    });
   }, []);
 
   function updateGame(id: string, patch: Partial<GameEntry>) {
@@ -288,6 +301,15 @@ export default function SessionForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+
+      {/* Signed-in player chip */}
+      {myName && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-lime-500/10 border border-lime-500/20 rounded-lg">
+          <span className="text-sm">🥒</span>
+          <span className="text-xs text-slate-400">Playing as</span>
+          <span className="text-sm font-bold text-lime-400">{myName}</span>
+        </div>
+      )}
 
       {/* ── Session header ───────────────────────────────────────────────── */}
       {/* Date */}

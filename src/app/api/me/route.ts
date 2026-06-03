@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getAllMatches, getProfile } from '@/lib/sheets';
+import { getTabRows } from '@/lib/sheets';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -8,16 +8,9 @@ export async function GET() {
 
   const email = session.user.email;
 
-  // Collect all unique player names from match history
-  const matches = await getAllMatches().catch(() => []);
-  const playerNames = new Set<string>();
-  for (const m of matches) {
-    m.players.split('/').map((p) => p.trim()).filter(Boolean).forEach((p) => playerNames.add(p));
-  }
+  // Read PROFILES tab directly — one call instead of N parallel lookups
+  const rows = await getTabRows('PROFILES').catch(() => [] as string[][]);
+  const match = rows.slice(1).find(r => (r[3] ?? '').toString().trim() === email);
 
-  // Fetch all profiles in parallel and find the one that matches this email
-  const profiles = await Promise.all(Array.from(playerNames).map((name) => getProfile(name)));
-  const found = profiles.find((p) => p?.googleEmail === email);
-
-  return Response.json({ player: found?.player ?? null });
+  return Response.json({ player: match?.[0]?.toString().trim() ?? null });
 }

@@ -126,6 +126,16 @@ export default function Nav() {
               <div className="border-t border-slate-800 py-1">
                 {session ? (
                   <div>
+                    {/* Onboarding nudge for unclaimed users */}
+                    {!myPlayer && (
+                      <Link
+                        href="/onboarding"
+                        className="flex items-center gap-2 mx-3 my-2 px-3 py-2 bg-lime-500/15 border border-lime-500/30 rounded-lg text-sm font-semibold text-lime-400 hover:bg-lime-500/25 transition-colors"
+                      >
+                        <span>🥒</span>
+                        Set up your player profile
+                      </Link>
+                    )}
                     {/* My Profile link */}
                     {myPlayer && (
                       <Link

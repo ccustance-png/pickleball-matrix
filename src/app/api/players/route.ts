@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getAllMatches } from '@/lib/sheets';
+import { getAllMatches, getTabRows } from '@/lib/sheets';
 
 export async function GET() {
   try {
-    const matches = await getAllMatches();
+    const [matches, profileRows] = await Promise.all([
+      getAllMatches(),
+      getTabRows('PROFILES').catch(() => [] as string[][]),
+    ]);
 
     const playerMap = new Map<string, { wins: number; losses: number; singles: number; doubles: number }>();
 
@@ -21,6 +24,14 @@ export async function GET() {
         else s.singles++;
       }
     }
+
+    // Also include registered players who haven't played yet (from PROFILES tab)
+    profileRows.slice(1).forEach(row => {
+      const name = row[0]?.toString().trim();
+      if (name && !playerMap.has(name)) {
+        playerMap.set(name, { wins: 0, losses: 0, singles: 0, doubles: 0 });
+      }
+    });
 
     const players = Array.from(playerMap.entries())
       .map(([name, s]) => ({
