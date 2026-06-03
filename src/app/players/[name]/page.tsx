@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getAllMatches, getTabRows, tabToObjects, getProfile, getEloRankings, getMatchNotes } from '@/lib/sheets';
+import { getAllMatches, getTabRows, tabToObjects, getProfile, getEloRankings, getMatchNotes, getDisplayName } from '@/lib/sheets';
 import { computePlayerData } from '@/lib/badges';
 import ClaimButton from '@/components/ClaimButton';
 import ProfileTabs from '@/components/ProfileTabs';
@@ -83,7 +83,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-3xl font-bold text-slate-100">{name}</h1>
+            <h1 className="text-3xl font-bold text-slate-100">{getDisplayName(name, profile)}</h1>
             {isClaimed && (
               <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-lime-500/15 text-lime-400 font-semibold">
                 ✓ Verified

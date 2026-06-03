@@ -27,6 +27,8 @@ export default async function EditProfilePage({ params }: { params: Promise<{ na
           name={name}
           currentPhoto={profile?.photoUrl ?? ''}
           currentBio={profile?.bio ?? ''}
+          currentFirstName={profile?.firstName ?? ''}
+          currentLastName={profile?.lastName ?? ''}
         />
       </div>
     </div>

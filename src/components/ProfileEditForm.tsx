@@ -4,17 +4,25 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
-type Props = { name: string; currentPhoto: string; currentBio: string };
+type Props = {
+  name: string;
+  currentPhoto: string;
+  currentBio: string;
+  currentFirstName?: string;
+  currentLastName?: string;
+};
 
-export default function ProfileEditForm({ name, currentPhoto, currentBio }: Props) {
+export default function ProfileEditForm({ name, currentPhoto, currentBio, currentFirstName = '', currentLastName = '' }: Props) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState(currentPhoto);
-  const [bio, setBio] = useState(currentBio);
+  const [preview,   setPreview]   = useState(currentPhoto);
+  const [bio,       setBio]       = useState(currentBio);
+  const [firstName, setFirstName] = useState(currentFirstName);
+  const [lastName,  setLastName]  = useState(currentLastName);
   const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState(currentPhoto);
-  const [error, setError] = useState('');
+  const [saving,    setSaving]    = useState(false);
+  const [photoUrl,  setPhotoUrl]  = useState(currentPhoto);
+  const [error,     setError]     = useState('');
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -44,7 +52,7 @@ export default function ProfileEditForm({ name, currentPhoto, currentBio }: Prop
       const res = await fetch(`/api/profile/${encodeURIComponent(name)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photoUrl, bio }),
+        body: JSON.stringify({ photoUrl, bio, firstName: firstName.trim(), lastName: lastName.trim() }),
       });
       if (!res.ok) throw new Error('Save failed');
       router.push(`/players/${encodeURIComponent(name)}`);
@@ -57,6 +65,32 @@ export default function ProfileEditForm({ name, currentPhoto, currentBio }: Prop
 
   return (
     <div className="space-y-6">
+      {/* Display name */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+          Display Name
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <input
+            type="text"
+            value={firstName}
+            onChange={e => setFirstName(e.target.value)}
+            placeholder="First name"
+            maxLength={30}
+            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30"
+          />
+          <input
+            type="text"
+            value={lastName}
+            onChange={e => setLastName(e.target.value)}
+            placeholder="Last name"
+            maxLength={30}
+            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30"
+          />
+        </div>
+        <p className="text-xs text-slate-600 mt-1">Shown everywhere in the app · username <span className="text-slate-500 font-mono">{name}</span> stays as the sheet key</p>
+      </div>
+
       {/* Photo */}
       <div>
         <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
@@ -86,16 +120,10 @@ export default function ProfileEditForm({ name, currentPhoto, currentBio }: Prop
             >
               {uploading ? 'Uploading…' : 'Choose Photo'}
             </button>
-            <p className="text-xs text-slate-500 mt-1.5">JPG, PNG, HEIC — choose from camera roll or take a photo</p>
+            <p className="text-xs text-slate-500 mt-1.5">JPG, PNG, HEIC</p>
           </div>
         </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileChange}
-        />
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
       </div>
 
       {/* Bio */}
@@ -105,7 +133,7 @@ export default function ProfileEditForm({ name, currentPhoto, currentBio }: Prop
         </label>
         <textarea
           value={bio}
-          onChange={(e) => setBio(e.target.value)}
+          onChange={e => setBio(e.target.value)}
           placeholder="Add a short bio…"
           rows={3}
           maxLength={200}
@@ -115,9 +143,7 @@ export default function ProfileEditForm({ name, currentPhoto, currentBio }: Prop
       </div>
 
       {error && (
-        <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
+        <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-300">{error}</div>
       )}
 
       <div className="flex gap-3">

@@ -28,36 +28,22 @@ export default function ClaimButton({ name, signedIn }: Props) {
     setStatus('loading');
 
     try {
-      // Step 1: claim the profile (link email to existing name)
-      const claimRes = await fetch(`/api/profile/${encodeURIComponent(name)}/claim`, { method: 'POST' });
+      // Claim the profile — includes firstName/lastName for display name
+      const claimRes = await fetch(`/api/profile/${encodeURIComponent(name)}/claim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim() }),
+      });
       const claimData = await claimRes.json();
       if (!claimRes.ok) throw new Error(claimData.error ?? 'Failed to claim');
 
-      let resolvedName = name;
-
-      // Step 2: if they entered a full name, rename across the sheet
-      if (firstName.trim() && lastName.trim()) {
-        const renameRes = await fetch('/api/profile/rename', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ oldName: name, firstName: firstName.trim(), lastName: lastName.trim() }),
-        });
-        const renameData = await renameRes.json();
-        if (!renameRes.ok) throw new Error(renameData.error ?? 'Failed to update name');
-        resolvedName = renameData.playerName ?? resolvedName;
-      }
+      const resolvedName = name;
 
       setFinalName(resolvedName);
       setStatus('success');
       setTimeout(() => {
         setModalOpen(false);
-        // Navigate to the new profile URL if name changed
-        const newPath = `/players/${encodeURIComponent(resolvedName)}`;
-        if (resolvedName !== name.toUpperCase()) {
-          router.push(newPath);
-        } else {
-          router.refresh();
-        }
+        router.refresh();
       }, 1800);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -125,14 +111,12 @@ export default function ClaimButton({ name, signedIn }: Props) {
                 </div>
                 {displayPreview && (
                   <p className="text-xs text-slate-500">
-                    Will rename <span className="text-slate-400 font-semibold">{name}</span>
-                    {' → '}
-                    <span className="text-lime-400 font-semibold">{displayPreview.toUpperCase()}</span>
-                    {' '}across all match records
+                    You&rsquo;ll appear as <span className="text-lime-400 font-semibold">{displayPreview}</span> throughout the app.
+                    Sheet key stays as <span className="text-slate-400 font-mono">{name}</span>.
                   </p>
                 )}
                 {!displayPreview && (
-                  <p className="text-xs text-slate-600">Leave blank to keep the name <span className="text-slate-500">{name}</span></p>
+                  <p className="text-xs text-slate-600">Your name in the app will show as <span className="text-slate-500">{name}</span> until you set a display name.</p>
                 )}
               </div>
 

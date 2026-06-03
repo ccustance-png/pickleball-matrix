@@ -1,9 +1,10 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getTabRows } from '@/lib/sheets';
+import { getAllProfilesMap } from '@/lib/sheets';
 
 const SCRIPT_URL = process.env.APPS_SCRIPT_URL!;
-const NAME_RE = /^[a-zA-Z'\-\s]+$/;
+const NAME_RE    = /^[a-zA-Z'\-\s]+$/;
+const USER_RE    = /^[a-zA-Z0-9_\-]+$/;
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -11,46 +12,51 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Not signed in' }, { status: 401 });
   }
 
-  const { firstName, lastName } = await req.json() as { firstName: string; lastName: string };
+  const { username, firstName, lastName } = await req.json() as {
+    username: string;
+    firstName: string;
+    lastName: string;
+  };
 
-  if (!firstName?.trim() || !lastName?.trim()) {
-    return Response.json({ error: 'First and last name are required' }, { status: 400 });
+  if (!username?.trim())  return Response.json({ error: 'Username is required' }, { status: 400 });
+  if (!firstName?.trim()) return Response.json({ error: 'First name is required' }, { status: 400 });
+  if (!lastName?.trim())  return Response.json({ error: 'Last name is required' }, { status: 400 });
+
+  if (!USER_RE.test(username.trim())) {
+    return Response.json({ error: 'Username can only contain letters, numbers, underscores, and hyphens' }, { status: 400 });
   }
   if (!NAME_RE.test(firstName.trim()) || !NAME_RE.test(lastName.trim())) {
     return Response.json({ error: 'Names can only contain letters, hyphens, and apostrophes' }, { status: 400 });
   }
-  if (firstName.trim().length < 2 || lastName.trim().length < 2) {
-    return Response.json({ error: 'First and last name must each be at least 2 characters' }, { status: 400 });
-  }
 
-  const playerName = `${firstName.trim()} ${lastName.trim()}`.toUpperCase();
-  const email = session.user.email;
+  const playerKey = username.trim().toUpperCase();
+  const email     = session.user.email;
 
-  // Read PROFILES tab — one call for all checks
-  const profileRows = await getTabRows('PROFILES').catch(() => [] as string[][]);
-  const data = profileRows.slice(1).filter(r => r[0]);
+  const profilesMap = await getAllProfilesMap().catch(() => ({} as Record<string, { googleEmail: string; player: string; photoUrl: string; bio: string }>));
 
   // Already have a profile?
-  const alreadyOwned = data.find(r => (r[3] ?? '').toString().trim() === email);
-  if (alreadyOwned) {
-    return Response.json({ error: 'You already have a profile', playerName: alreadyOwned[0]?.toString().trim() }, { status: 409 });
+  const already = Object.values(profilesMap).find(p => p.googleEmail === email);
+  if (already) {
+    return Response.json({ error: 'You already have a profile', playerName: already.player }, { status: 409 });
   }
 
-  // Name taken?
-  const nameTaken = data.find(r => r[0].toString().trim().toUpperCase() === playerName);
-  if (nameTaken) {
-    return Response.json({ error: 'That name is already taken — try adding a middle initial (e.g. Calvin A. Smith)' }, { status: 409 });
+  // Username taken?
+  if (profilesMap[playerKey]) {
+    return Response.json({ error: 'That username is already taken — try a different one' }, { status: 409 });
   }
 
-  // Create profile in GAS
   const res = await fetch(SCRIPT_URL, {
     method: 'POST',
-    body: JSON.stringify({ action: 'claimProfile', player: playerName, googleEmail: email }),
+    body: JSON.stringify({
+      action: 'claimProfile',
+      player: playerKey,
+      googleEmail: email,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+    }),
   });
 
-  if (!res.ok) {
-    return Response.json({ error: 'Failed to save profile' }, { status: 500 });
-  }
+  if (!res.ok) return Response.json({ error: 'Failed to save profile' }, { status: 500 });
 
-  return Response.json({ success: true, playerName });
+  return Response.json({ success: true, playerName: playerKey });
 }

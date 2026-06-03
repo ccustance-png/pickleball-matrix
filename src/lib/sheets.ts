@@ -72,7 +72,41 @@ export async function getTabRows(tabName: string): Promise<string[][]> {
   }
 }
 
-export type PlayerProfile = { player: string; photoUrl: string; bio: string; googleEmail: string };
+export type PlayerProfile = {
+  player: string;
+  photoUrl: string;
+  bio: string;
+  googleEmail: string;
+  firstName?: string;
+  lastName?: string;
+};
+
+/** Returns "First Last" if set, otherwise falls back to the raw username. */
+export function getDisplayName(username: string, profile?: PlayerProfile | null): string {
+  if (profile?.firstName && profile?.lastName) {
+    return `${profile.firstName} ${profile.lastName}`;
+  }
+  return username;
+}
+
+/** Build a username → profile map from the PROFILES tab in one call. */
+export async function getAllProfilesMap(): Promise<Record<string, PlayerProfile>> {
+  const rows = await getTabRows('PROFILES').catch(() => [] as string[][]);
+  const map: Record<string, PlayerProfile> = {};
+  rows.slice(1).forEach(row => {
+    if (!row[0]) return;
+    const key = row[0].toString().trim().toUpperCase();
+    map[key] = {
+      player:     row[0]?.toString().trim() ?? '',
+      photoUrl:   row[1]?.toString() ?? '',
+      bio:        row[2]?.toString() ?? '',
+      googleEmail:row[3]?.toString() ?? '',
+      firstName:  row[4]?.toString() ?? '',
+      lastName:   row[5]?.toString() ?? '',
+    };
+  });
+  return map;
+}
 
 export async function getProfile(name: string): Promise<PlayerProfile | null> {
   try {
@@ -86,10 +120,16 @@ export async function getProfile(name: string): Promise<PlayerProfile | null> {
   }
 }
 
-export async function upsertProfile(player: string, photoUrl: string, bio: string): Promise<void> {
+export async function upsertProfile(
+  player: string,
+  photoUrl: string,
+  bio: string,
+  firstName?: string,
+  lastName?: string,
+): Promise<void> {
   await fetch(scriptUrl(), {
     method: 'POST',
-    body: JSON.stringify({ action: 'upsertProfile', player, photoUrl, bio }),
+    body: JSON.stringify({ action: 'upsertProfile', player, photoUrl, bio, firstName, lastName }),
   });
 }
 
