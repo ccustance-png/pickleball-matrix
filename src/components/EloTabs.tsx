@@ -14,15 +14,15 @@ function EloTable({ players, wlMap }: { players: EloEntry[]; wlMap: WLMap }) {
   const range = max - min || 1;
 
   return (
-    <div className="rounded-xl border border-slate-800 overflow-hidden">
+    <div className="rounded-xl border border-slate-800 overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-900 text-slate-400 text-xs uppercase tracking-wider">
-            <th className="px-4 py-3 text-left w-8">Rank</th>
-            <th className="px-4 py-3 text-left">Player</th>
-            <th className="px-4 py-3 text-right">ELO</th>
-            <th className="px-4 py-3 text-center">W-L</th>
-            <th className="px-4 py-3 text-left min-w-[100px]"></th>
+            <th className="px-3 py-3 text-left w-7">Rank</th>
+            <th className="px-3 py-3 text-left">Player</th>
+            <th className="px-3 py-3 text-right">ELO</th>
+            <th className="px-3 py-3 text-center">W-L</th>
+            <th className="px-3 py-3 text-left w-14"></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-800">
@@ -31,26 +31,24 @@ function EloTable({ players, wlMap }: { players: EloEntry[]; wlMap: WLMap }) {
             const record = wlMap[p.name] ?? { wins: 0, losses: 0 };
             return (
               <tr key={p.name} className="bg-slate-950 hover:bg-slate-900 transition-colors">
-                <td className="px-4 py-3 text-slate-500 font-mono text-xs">{i + 1}</td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-3 text-slate-500 font-mono text-xs">{i + 1}</td>
+                <td className="px-3 py-3">
                   <Link
                     href={`/players/${encodeURIComponent(p.name)}`}
-                    className="font-semibold text-slate-100 hover:text-lime-400 transition-colors"
+                    className="font-semibold text-sm text-slate-100 hover:text-lime-400 transition-colors whitespace-nowrap"
                   >
                     {p.name}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-right font-mono font-bold text-lime-400">{p.elo}</td>
-                <td className="px-4 py-3 text-center font-mono text-xs whitespace-nowrap">
+                <td className="px-3 py-3 text-right font-mono font-bold text-lime-400 whitespace-nowrap">{p.elo}</td>
+                <td className="px-3 py-3 text-center font-mono text-xs whitespace-nowrap">
                   <span className="text-slate-300">{record.wins}</span>
                   <span className="text-slate-600">–</span>
                   <span className="text-slate-400">{record.losses}</span>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-lime-500 rounded-full" style={{ width: `${pct}%` }} />
-                    </div>
+                <td className="px-3 py-3 w-14">
+                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-lime-500 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </td>
               </tr>
