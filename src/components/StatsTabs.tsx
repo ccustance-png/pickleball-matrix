@@ -288,9 +288,9 @@ export default function StatsTabs({ matches, singlesElo, doublesElo, players }: 
     }
 
     // ── Score prediction ───────────────────────────────────────────────────
-    const p1Favoured = pct >= 0.5;
+    const p1Favored = pct >= 0.5;
     const favWinPct = Math.max(pct, 1 - pct);
-    const favKey = p1Favoured ? predP1 : predP2;
+    const favKey = p1Favored ? predP1 : predP2;
     const favWins = h2hRaw.filter(m => m.win.toUpperCase().includes(favKey.toUpperCase()));
     let scorePred: { p1: number; p2: number };
     if (favWins.length >= 2) {
@@ -302,10 +302,10 @@ export default function StatsTabs({ matches, singlesElo, doublesElo, players }: 
       });
       const fa = Math.min(11, Math.round(fSum / favWins.length));
       const da = Math.min(11, Math.round(dSum / favWins.length));
-      scorePred = p1Favoured ? { p1: fa, p2: da } : { p1: da, p2: fa };
+      scorePred = p1Favored ? { p1: fa, p2: da } : { p1: da, p2: fa };
     } else {
       const loser = Math.min(11, Math.max(0, Math.round(11 * (1 - favWinPct) / favWinPct * 0.85)));
-      scorePred = p1Favoured ? { p1: 11, p2: loser } : { p1: loser, p2: 11 };
+      scorePred = p1Favored ? { p1: 11, p2: loser } : { p1: loser, p2: 11 };
     }
 
     // ── Recent form per player ─────────────────────────────────────────────
@@ -337,23 +337,23 @@ export default function StatsTabs({ matches, singlesElo, doublesElo, players }: 
     const eloDiff  = Math.abs(e1 - e2);
     const p1Label  = predType === 'DOUBLES' ? `${predP1}/${predT1p2}` : predP1;
     const p2Label  = predType === 'DOUBLES' ? `${predP2}/${predT2p2}` : predP2;
-    const favLabel = p1Favoured ? p1Label : p2Label;
-    const dogLabel = p1Favoured ? p2Label : p1Label;
+    const favLabel = p1Favored ? p1Label : p2Label;
+    const dogLabel = p1Favored ? p2Label : p1Label;
     const favPctN  = Math.round(favWinPct * 100);
-    const favStrk  = p1Favoured ? p1Strk : p2Strk;
-    const dogStrk  = p1Favoured ? p2Strk : p1Strk;
-    const favRW    = p1Favoured ? p1RW : p2RW;
-    const favR5    = p1Favoured ? p1R5 : p2R5;
-    const dogRW    = p1Favoured ? p2RW : p1RW;
-    const dogR5    = p1Favoured ? p2R5 : p1R5;
+    const favStrk  = p1Favored ? p1Strk : p2Strk;
+    const dogStrk  = p1Favored ? p2Strk : p1Strk;
+    const favRW    = p1Favored ? p1RW : p2RW;
+    const favR5    = p1Favored ? p1R5 : p2R5;
+    const dogRW    = p1Favored ? p2RW : p1RW;
+    const dogR5    = p1Favored ? p2R5 : p1R5;
 
     let s1: string, s2: string;
     if (eloDiff < 50) {
       s1 = `${favLabel} holds a razor-thin ELO edge (${e1} vs ${e2}) — this is essentially a coin flip where either player can take it.`;
     } else if (eloDiff < 150) {
-      s1 = `${favLabel} enters as the moderate favourite with a ${eloDiff}-point ELO advantage, translating to a ${favPctN}% win probability.`;
+      s1 = `${favLabel} enters as the moderate favorite with a ${eloDiff}-point ELO advantage, translating to a ${favPctN}% win probability.`;
     } else {
-      s1 = `${favLabel} carries a commanding ${eloDiff}-point ELO lead over ${dogLabel}, making them a strong ${favPctN}% favourite on paper.`;
+      s1 = `${favLabel} carries a commanding ${eloDiff}-point ELO lead over ${dogLabel}, making them a strong ${favPctN}% favorite on paper.`;
     }
 
     if (favStrk.type === 'W' && favStrk.count >= 3) {
@@ -361,7 +361,7 @@ export default function StatsTabs({ matches, singlesElo, doublesElo, players }: 
     } else if (dogStrk.type === 'W' && dogStrk.count >= 3) {
       s2 = `${dogLabel} is red hot though — riding a ${dogStrk.count}-win streak, an upset absolutely cannot be ruled out.`;
     } else if (h2hRaw.length > 0) {
-      const favH2h = p1Favoured ? p1wins : (h2hRaw.length - p1wins);
+      const favH2h = p1Favored ? p1wins : (h2hRaw.length - p1wins);
       const dogH2h = h2hRaw.length - favH2h;
       if (favH2h > dogH2h) {
         s2 = `History backs the pick — ${favLabel} leads their head-to-head ${favH2h}–${dogH2h}, showing they know how to get it done against this opponent.`;

@@ -78,7 +78,7 @@ export default function ActivityCardActions({ matchId, shareText }: Props) {
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Pickleball ELO', text: shareText, url });
-      } catch { /* user cancelled */ }
+      } catch { /* user canceled */ }
     } else {
       await navigator.clipboard.writeText(url);
       setCopied(true);
