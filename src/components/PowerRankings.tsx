@@ -223,7 +223,7 @@ export default function PowerRankings({ matches, singlesElo, doublesElo, singles
                 <div className="flex-1 min-w-0">
                   <Link
                     href={`/players/${encodeURIComponent(p.name)}`}
-                    className="font-bold text-slate-100 hover:text-lime-400 transition-colors text-sm"
+                    className="font-bold text-slate-100 hover:text-lime-400 transition-colors text-sm whitespace-nowrap"
                   >
                     {p.name}
                   </Link>

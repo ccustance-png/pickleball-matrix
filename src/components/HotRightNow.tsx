@@ -43,26 +43,26 @@ export default function HotRightNow({ singles, doubles }: Props) {
       {players.length === 0 ? (
         <p className="text-slate-500 text-sm py-3">No recent {tab} activity in the last 14 days.</p>
       ) : (
-        <div className="rounded-xl border border-slate-800 overflow-hidden">
+        <div className="rounded-xl border border-slate-800 overflow-x-auto">
           <table className="w-full text-sm">
             <tbody className="divide-y divide-slate-800">
               {players.map((p, i) => (
                 <tr key={p.name} className="bg-slate-950 hover:bg-slate-900 transition-colors">
-                  <td className="px-4 py-3 text-slate-500 font-mono text-xs w-6">{i + 1}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 text-slate-500 font-mono text-xs w-6">{i + 1}</td>
+                  <td className="px-3 py-3">
                     <Link
                       href={`/players/${encodeURIComponent(p.name)}`}
-                      className="font-semibold text-slate-100 hover:text-lime-400 transition-colors"
+                      className="font-semibold text-slate-100 hover:text-lime-400 transition-colors whitespace-nowrap"
                     >
                       {p.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-400">{p.currentElo}</td>
-                  <td className="px-4 py-3 text-right font-mono font-bold text-lime-400">
+                  <td className="px-3 py-3 text-right font-mono text-slate-400 whitespace-nowrap">{p.currentElo}</td>
+                  <td className="px-3 py-3 text-right font-mono font-bold text-lime-400 whitespace-nowrap">
                     +{p.change}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-lime-500/15 text-lime-400 text-xs font-bold">
+                  <td className="px-3 py-3 text-right">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-lime-500/15 text-lime-400 text-xs font-bold whitespace-nowrap">
                       ↑{p.pct}%
                     </span>
                   </td>
