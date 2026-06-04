@@ -17,6 +17,13 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // Safe-area padding for iPhone home indicator
+    function({ addUtilities }: { addUtilities: (u: Record<string, Record<string, string>>) => void }) {
+      addUtilities({
+        '.pb-safe': { 'padding-bottom': 'env(safe-area-inset-bottom)' },
+      });
+    },
+  ],
 };
 export default config;

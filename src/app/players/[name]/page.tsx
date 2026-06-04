@@ -8,6 +8,7 @@ import { computePlayerData } from '@/lib/badges';
 import ClaimButton from '@/components/ClaimButton';
 import ProfileTabs from '@/components/ProfileTabs';
 import PickleJarButton from '@/components/PickleJarButton';
+import EloChart from '@/components/EloChart';
 
 export const revalidate = 15;
 
@@ -54,6 +55,44 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
   const doublesMatches = playerMatches.filter((m) => m.type === 'DOUBLES');
   const singlesWins = singlesMatches.filter((m) => m.win.split('/').map((p) => p.trim()).includes(name)).length;
   const doublesWins = doublesMatches.filter((m) => m.win.split('/').map((p) => p.trim()).includes(name)).length;
+
+  // Competitive vs Casual split
+  const compSingles  = singlesMatches.filter(m => m.bracket.toUpperCase() !== 'CASUAL');
+  const compDoubles  = doublesMatches.filter(m => m.bracket.toUpperCase() !== 'CASUAL');
+  const casualAll    = playerMatches.filter(m => m.bracket.toUpperCase() === 'CASUAL');
+  const compSinglesW = compSingles.filter(m => m.win.split('/').map(p => p.trim()).includes(name)).length;
+  const compDoublesW = compDoubles.filter(m => m.win.split('/').map(p => p.trim()).includes(name)).length;
+  const casualW      = casualAll.filter(m => m.win.split('/').map(p => p.trim()).includes(name)).length;
+
+  // Head-to-head: record against each opponent played 2+ times (singles)
+  const h2hMap: Record<string, { wins: number; losses: number }> = {};
+  for (const m of singlesMatches) {
+    const opp = m.players.split('/').map(p => p.trim()).find(p => p !== name);
+    if (!opp) continue;
+    if (!h2hMap[opp]) h2hMap[opp] = { wins: 0, losses: 0 };
+    if (m.win.split('/').map(p => p.trim()).includes(name)) h2hMap[opp].wins++;
+    else h2hMap[opp].losses++;
+  }
+  const h2h = Object.entries(h2hMap)
+    .filter(([, r]) => r.wins + r.losses >= 2)
+    .sort((a, b) => (b[1].wins + b[1].losses) - (a[1].wins + a[1].losses))
+    .slice(0, 8);
+
+  // Partner stats: doubles record with each partner
+  const partnerMap: Record<string, { wins: number; losses: number }> = {};
+  for (const m of doublesMatches) {
+    const myTeam = m.win.split('/').map(p => p.trim()).includes(name) ? m.win : m.loss;
+    const partners = myTeam.split('/').map(p => p.trim()).filter(p => p !== name);
+    const won = m.win.split('/').map(p => p.trim()).includes(name);
+    for (const partner of partners) {
+      if (!partnerMap[partner]) partnerMap[partner] = { wins: 0, losses: 0 };
+      if (won) partnerMap[partner].wins++; else partnerMap[partner].losses++;
+    }
+  }
+  const partners = Object.entries(partnerMap)
+    .filter(([, r]) => r.wins + r.losses >= 2)
+    .sort((a, b) => (b[1].wins + b[1].losses) - (a[1].wins + a[1].losses))
+    .slice(0, 6);
 
   const findPlayerStats = (rows: string[][]): Record<string, string> | null => {
     const objs = tabToObjects(rows);
@@ -168,6 +207,93 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
               )
             )}
           </dl>
+        </div>
+      )}
+
+      {/* ELO History Charts */}
+      {(singlesMatches.length >= 3 || doublesMatches.length >= 3) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {singlesMatches.length >= 3 && <EloChart matches={matches} playerName={name} type="SINGLES" />}
+          {doublesMatches.length >= 3 && <EloChart matches={matches} playerName={name} type="DOUBLES" />}
+        </div>
+      )}
+
+      {/* Competitive vs Casual split */}
+      {(compSingles.length > 0 || compDoubles.length > 0 || casualAll.length > 0) && (
+        <div>
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Record Breakdown</h2>
+          <dl className="grid grid-cols-3 gap-3">
+            {compSingles.length > 0 && (
+              <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
+                <dt className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Comp Singles</dt>
+                <dd className="text-slate-100 font-bold font-mono">{compSinglesW}–{compSingles.length - compSinglesW}</dd>
+              </div>
+            )}
+            {compDoubles.length > 0 && (
+              <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
+                <dt className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Comp Doubles</dt>
+                <dd className="text-slate-100 font-bold font-mono">{compDoublesW}–{compDoubles.length - compDoublesW}</dd>
+              </div>
+            )}
+            {casualAll.length > 0 && (
+              <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
+                <dt className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Casual</dt>
+                <dd className="text-slate-100 font-bold font-mono">{casualW}–{casualAll.length - casualW}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+
+      {/* Head-to-head */}
+      {h2h.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Head to Head (Singles)</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {h2h.map(([opp, rec]) => {
+              const total = rec.wins + rec.losses;
+              const pct = Math.round((rec.wins / total) * 100);
+              return (
+                <div key={opp} className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 flex items-center justify-between gap-2">
+                  <Link href={`/players/${encodeURIComponent(opp)}`} className="text-sm font-semibold text-slate-200 hover:text-lime-400 transition-colors truncate">
+                    {opp}
+                  </Link>
+                  <div className="text-right shrink-0">
+                    <span className={`font-mono font-bold text-sm ${rec.wins > rec.losses ? 'text-lime-400' : rec.wins < rec.losses ? 'text-red-400' : 'text-slate-400'}`}>
+                      {rec.wins}–{rec.losses}
+                    </span>
+                    <span className="text-slate-600 text-xs ml-1">({pct}%)</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Partner stats */}
+      {partners.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Doubles Partners</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {partners.map(([partner, rec]) => {
+              const total = rec.wins + rec.losses;
+              const pct = Math.round((rec.wins / total) * 100);
+              return (
+                <div key={partner} className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 flex items-center justify-between gap-2">
+                  <Link href={`/players/${encodeURIComponent(partner)}`} className="text-sm font-semibold text-slate-200 hover:text-lime-400 transition-colors truncate">
+                    {partner}
+                  </Link>
+                  <div className="text-right shrink-0">
+                    <span className={`font-mono font-bold text-sm ${rec.wins > rec.losses ? 'text-lime-400' : rec.wins < rec.losses ? 'text-red-400' : 'text-slate-400'}`}>
+                      {rec.wins}–{rec.losses}
+                    </span>
+                    <span className="text-slate-600 text-xs ml-1">({pct}%)</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

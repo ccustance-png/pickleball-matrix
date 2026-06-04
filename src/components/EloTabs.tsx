@@ -3,13 +3,28 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import type { EloEntry } from '@/lib/sheets';
+import type { StreakMap } from '@/app/page';
 
 type WLRecord = { wins: number; losses: number };
 type WLMap = Record<string, WLRecord>;
 
 const PROVISIONAL_THRESHOLD = 10;
 
-function EloTable({ players, wlMap }: { players: EloEntry[]; wlMap: WLMap }) {
+function StreakBadge({ name, streaks }: { name: string; streaks: StreakMap }) {
+  const s = streaks[name.toUpperCase()] ?? streaks[name];
+  if (!s || s.count < 2) return null;
+  return (
+    <span className={`text-xs font-bold px-1.5 py-0.5 rounded-md ml-1.5 ${
+      s.kind === 'W'
+        ? 'bg-lime-500/15 text-lime-400'
+        : 'bg-red-500/10 text-red-400'
+    }`}>
+      {s.kind}{s.count}
+    </span>
+  );
+}
+
+function EloTable({ players, wlMap, streaks }: { players: EloEntry[]; wlMap: WLMap; streaks: StreakMap }) {
   // Only show players who have hit the provisional threshold
   const ranked = players.filter((p) => {
     const r = wlMap[p.name.toUpperCase()] ?? wlMap[p.name] ?? { wins: 0, losses: 0 };
@@ -41,12 +56,15 @@ function EloTable({ players, wlMap }: { players: EloEntry[]; wlMap: WLMap }) {
               <tr key={p.name} className="bg-slate-950 hover:bg-slate-900 transition-colors">
                 <td className="px-3 py-3 text-slate-500 font-mono text-xs">{i + 1}</td>
                 <td className="px-3 py-3">
-                  <Link
-                    href={`/players/${encodeURIComponent(p.name)}`}
-                    className="font-semibold text-sm text-slate-100 hover:text-lime-400 transition-colors whitespace-nowrap"
-                  >
-                    {p.name}
-                  </Link>
+                  <div className="flex items-center">
+                    <Link
+                      href={`/players/${encodeURIComponent(p.name)}`}
+                      className="font-semibold text-sm text-slate-100 hover:text-lime-400 transition-colors whitespace-nowrap"
+                    >
+                      {p.name}
+                    </Link>
+                    <StreakBadge name={p.name} streaks={streaks} />
+                  </div>
                 </td>
                 <td className="px-3 py-3 text-right font-mono font-bold text-lime-400 whitespace-nowrap">{p.elo}</td>
                 <td className="px-3 py-3 text-center font-mono text-xs whitespace-nowrap">
@@ -73,9 +91,11 @@ type Props = {
   doubles: EloEntry[];
   singlesWL: WLMap;
   doublesWL: WLMap;
+  singlesStreaks: StreakMap;
+  doublesStreaks: StreakMap;
 };
 
-export default function EloTabs({ singles, doubles, singlesWL, doublesWL }: Props) {
+export default function EloTabs({ singles, doubles, singlesWL, doublesWL, singlesStreaks, doublesStreaks }: Props) {
   const [tab, setTab] = useState<'singles' | 'doubles'>('singles');
 
   return (
@@ -102,6 +122,7 @@ export default function EloTabs({ singles, doubles, singlesWL, doublesWL }: Prop
       <EloTable
         players={tab === 'singles' ? singles : doubles}
         wlMap={tab === 'singles' ? singlesWL : doublesWL}
+        streaks={tab === 'singles' ? singlesStreaks : doublesStreaks}
       />
     </div>
   );

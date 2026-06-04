@@ -3,6 +3,35 @@ import { getAllMatches, getEloRankings, type MatchRow } from '@/lib/sheets';
 import EloTabs from '@/components/EloTabs';
 import HotRightNow from '@/components/HotRightNow';
 
+export type StreakMap = Record<string, { count: number; kind: 'W' | 'L' }>;
+
+/** For each player, count how many consecutive wins or losses they have at the END of their match history. */
+function computeStreaks(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES'): StreakMap {
+  const streaks: StreakMap = {};
+  const done = new Set<string>();
+  // Most-recent first, competitive only
+  const filtered = [...matches]
+    .filter(m => m.type === type && m.bracket.toUpperCase() !== 'CASUAL')
+    .reverse();
+
+  for (const m of filtered) {
+    const winners = m.win.split('/').map(p => p.trim());
+    const all = m.players.split('/').map(p => p.trim()).filter(Boolean);
+    for (const player of all) {
+      if (done.has(player)) continue;
+      const kind: 'W' | 'L' = winners.includes(player) ? 'W' : 'L';
+      if (!streaks[player]) {
+        streaks[player] = { count: 1, kind };
+      } else if (streaks[player].kind === kind) {
+        streaks[player].count++;
+      } else {
+        done.add(player);
+      }
+    }
+  }
+  return streaks;
+}
+
 // Replay ELO math to find biggest gainers over the last 14 days
 function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
   const K = 32;
@@ -92,6 +121,30 @@ function computeHotPlayers(matches: MatchRow[], type: 'SINGLES' | 'DOUBLES') {
     .slice(0, 5);
 }
 
+/** Find the player with the most competitive wins in the current calendar month. */
+function computePlayerOfMonth(matches: MatchRow[]): { name: string; wins: number; type: string } | null {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+  const wins: Record<string, number> = {};
+  for (const m of matches) {
+    if (m.bracket.toUpperCase() === 'CASUAL') continue;
+    // Parse m/d/yy date
+    const [mo, dy, yr] = m.date.split('/').map(Number);
+    const matchTime = new Date(2000 + (yr || 0), (mo || 1) - 1, dy || 1).getTime();
+    if (matchTime < monthStart) continue;
+
+    for (const p of m.win.split('/').map(p => p.trim()).filter(Boolean)) {
+      wins[p] = (wins[p] ?? 0) + 1;
+    }
+  }
+
+  const entries = Object.entries(wins).filter(([, w]) => w >= 3);
+  if (!entries.length) return null;
+  const [name, w] = entries.sort((a, b) => b[1] - a[1])[0];
+  return { name, wins: w, type: 'wins this month' };
+}
+
 export const revalidate = 15;
 
 export default async function HomePage() {
@@ -102,6 +155,9 @@ export default async function HomePage() {
 
   const hotSingles = computeHotPlayers(matches, 'SINGLES');
   const hotDoubles = computeHotPlayers(matches, 'DOUBLES');
+  const singlesStreaks = computeStreaks(matches, 'SINGLES');
+  const doublesStreaks = computeStreaks(matches, 'DOUBLES');
+  const playerOfMonth = computePlayerOfMonth(matches);
 
   // Most recent close matches (decided by 2 pts or less), up to 5
   const nailBiters = [...matches]
@@ -138,8 +194,25 @@ export default async function HomePage() {
         + Log Session
       </Link>
 
+      {/* Player of the Month */}
+      {playerOfMonth && (
+        <Link href={`/players/${encodeURIComponent(playerOfMonth.name)}`}
+          className="flex items-center gap-4 bg-gradient-to-r from-lime-500/10 to-slate-900 border border-lime-500/20 rounded-xl px-5 py-4 hover:border-lime-500/40 transition-colors"
+        >
+          <span className="text-3xl">🏆</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-lime-400 uppercase tracking-wider mb-0.5">Player of the Month</p>
+            <p className="text-lg font-bold text-slate-100 truncate">{playerOfMonth.name}</p>
+            <p className="text-xs text-slate-400">{playerOfMonth.wins} competitive {playerOfMonth.type}</p>
+          </div>
+          <svg className="w-4 h-4 text-slate-600 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+      )}
+
       {/* ELO Rankings */}
-      <EloTabs singles={elo.singles} doubles={elo.doubles} singlesWL={singlesWL} doublesWL={doublesWL} />
+      <EloTabs singles={elo.singles} doubles={elo.doubles} singlesWL={singlesWL} doublesWL={doublesWL} singlesStreaks={singlesStreaks} doublesStreaks={doublesStreaks} />
 
       {/* Nail Biters */}
       {nailBiters.length > 0 && (
