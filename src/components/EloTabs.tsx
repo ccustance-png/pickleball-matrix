@@ -96,13 +96,13 @@ export default function EloTabs({ singles, doubles, singlesWL, doublesWL }: Prop
           ))}
         </div>
       </div>
+      <p className="text-xs text-slate-500 mb-3">
+        🏓 Requires {PROVISIONAL_THRESHOLD} games to appear on the leaderboard
+      </p>
       <EloTable
         players={tab === 'singles' ? singles : doubles}
         wlMap={tab === 'singles' ? singlesWL : doublesWL}
       />
-      <p className="text-xs text-slate-600 mt-2 text-right">
-        Requires {PROVISIONAL_THRESHOLD} games to appear on the leaderboard
-      </p>
     </div>
   );
 }
