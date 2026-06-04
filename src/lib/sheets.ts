@@ -139,15 +139,32 @@ export async function getEloRankings(): Promise<{ singles: EloEntry[]; doubles: 
   const rows = await getTabRows('ELO');
   const data = rows.slice(1); // skip header
 
-  const singles: EloEntry[] = data
-    .filter((r) => r[0] && r[1] && !isNaN(Number(r[1])))
-    .map((r) => ({ name: String(r[0]), elo: Number(r[1]) }))
-    .sort((a, b) => b.elo - a.elo);
+  // Deduplicate by name (case-insensitive) keeping highest ELO.
+  // Duplicates can appear when updateElo() runs concurrently in Apps Script.
+  const singlesMap = new Map<string, EloEntry>();
+  const doublesMap = new Map<string, EloEntry>();
 
-  const doubles: EloEntry[] = data
-    .filter((r) => r[3] && r[4] && !isNaN(Number(r[4])))
-    .map((r) => ({ name: String(r[3]), elo: Number(r[4]) }))
-    .sort((a, b) => b.elo - a.elo);
+  for (const r of data) {
+    if (r[0] && r[1] && !isNaN(Number(r[1]))) {
+      const name = String(r[0]).trim();
+      const elo  = Number(r[1]);
+      const key  = name.toUpperCase();
+      if (!singlesMap.has(key) || singlesMap.get(key)!.elo < elo) {
+        singlesMap.set(key, { name, elo });
+      }
+    }
+    if (r[3] && r[4] && !isNaN(Number(r[4]))) {
+      const name = String(r[3]).trim();
+      const elo  = Number(r[4]);
+      const key  = name.toUpperCase();
+      if (!doublesMap.has(key) || doublesMap.get(key)!.elo < elo) {
+        doublesMap.set(key, { name, elo });
+      }
+    }
+  }
+
+  const singles = Array.from(singlesMap.values()).sort((a, b) => b.elo - a.elo);
+  const doubles = Array.from(doublesMap.values()).sort((a, b) => b.elo - a.elo);
 
   return { singles, doubles };
 }
