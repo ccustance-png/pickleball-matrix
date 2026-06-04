@@ -115,21 +115,43 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
       </div>
 
       {/* ELO */}
-      {(singlesElo !== null || doublesElo !== null) && (
+      {(singlesElo !== null || doublesElo !== null || singlesMatches.length > 0 || doublesMatches.length > 0) && (
         <div>
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">ELO / Ratings</h2>
           <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {singlesElo !== null && (
-              <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
-                <dt className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Singles ELO</dt>
-                <dd className="text-lime-400 font-bold font-mono text-lg">{singlesElo}</dd>
-              </div>
+            {/* Singles */}
+            {singlesMatches.length > 0 && (
+              singlesMatches.length >= 10 && singlesElo !== null ? (
+                <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
+                  <dt className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Singles ELO</dt>
+                  <dd className="text-lime-400 font-bold font-mono text-lg">{singlesElo}</dd>
+                </div>
+              ) : (
+                <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
+                  <dt className="text-xs text-slate-500 uppercase tracking-wider mb-1">Singles</dt>
+                  <dd className="text-xs text-slate-400 mb-2">{singlesMatches.length}/10 games to rank</dd>
+                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-lime-500/60 rounded-full transition-all" style={{ width: `${Math.min((singlesMatches.length / 10) * 100, 100)}%` }} />
+                  </div>
+                </div>
+              )
             )}
-            {doublesElo !== null && (
-              <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
-                <dt className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Doubles ELO</dt>
-                <dd className="text-lime-400 font-bold font-mono text-lg">{doublesElo}</dd>
-              </div>
+            {/* Doubles */}
+            {doublesMatches.length > 0 && (
+              doublesMatches.length >= 10 && doublesElo !== null ? (
+                <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
+                  <dt className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Doubles ELO</dt>
+                  <dd className="text-lime-400 font-bold font-mono text-lg">{doublesElo}</dd>
+                </div>
+              ) : (
+                <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3">
+                  <dt className="text-xs text-slate-500 uppercase tracking-wider mb-1">Doubles</dt>
+                  <dd className="text-xs text-slate-400 mb-2">{doublesMatches.length}/10 games to rank</dd>
+                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-lime-500/60 rounded-full transition-all" style={{ width: `${Math.min((doublesMatches.length / 10) * 100, 100)}%` }} />
+                  </div>
+                </div>
+              )
             )}
           </dl>
         </div>
