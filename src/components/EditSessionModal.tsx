@@ -45,6 +45,7 @@ export default function EditSessionModal({ anchorId, sessionDate, note, matches,
   // ── Games state ────────────────────────────────────────────────────────────
   const [playerList, setPlayerList]     = useState<string[]>([]);
   const [existing,   setExisting]       = useState<EditableGame[]>(() => matches.map(matchToEditable));
+  const [toDelete,   setToDelete]       = useState<Set<number>>(new Set());
   const [newGames,   setNewGames]       = useState<GameEntry[]>([]);
   const [gamesStatus, setGamesStatus]   = useState<'idle'|'loading'|'success'|'error'>('idle');
   const [gamesError,  setGamesError]    = useState('');
@@ -68,6 +69,14 @@ export default function EditSessionModal({ anchorId, sessionDate, note, matches,
   // ── Existing game helpers ──────────────────────────────────────────────────
   function updateExisting(id: string, patch: Partial<GameEntry>) {
     setExisting(prev => prev.map(g => g.id === id ? { ...g, ...patch } : g));
+  }
+
+  function toggleDelete(matchId: number) {
+    setToDelete(prev => {
+      const next = new Set(prev);
+      next.has(matchId) ? next.delete(matchId) : next.add(matchId);
+      return next;
+    });
   }
 
   // ── New game helpers ───────────────────────────────────────────────────────
@@ -107,9 +116,19 @@ export default function EditSessionModal({ anchorId, sessionDate, note, matches,
 
     setGamesStatus('loading');
     try {
-      // 1. PUT all existing games (updates any changed fields)
+      // 1. DELETE any games marked for removal
+      if (toDelete.size > 0) {
+        await Promise.all(
+          Array.from(toDelete).map((matchId) =>
+            fetch(`/api/match/${matchId}`, { method: 'DELETE' })
+              .then(r => { if (!r.ok) throw new Error(`Failed to delete game ${matchId}`); })
+          )
+        );
+      }
+
+      // 2. PUT all remaining existing games (updates any changed fields)
       await Promise.all(
-        existing.map((g) =>
+        existing.filter(g => !toDelete.has(g.matchId)).map((g) =>
           fetch(`/api/match/${g.matchId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -126,7 +145,7 @@ export default function EditSessionModal({ anchorId, sessionDate, note, matches,
         )
       );
 
-      // 2. POST any new games linked to this session
+      // 3. POST any new games linked to this session
       if (newGames.length > 0) {
         const res = await fetch(`/api/sessions/${anchorId}`, {
           method: 'POST',
@@ -234,17 +253,32 @@ export default function EditSessionModal({ anchorId, sessionDate, note, matches,
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Existing games — edit as needed
                   </p>
-                  {existing.map((game, i) => (
-                    <GameCard
-                      key={game.id}
-                      game={game}
-                      index={i}
-                      players={playerList}
-                      onChange={patch => updateExisting(game.id, patch)}
-                      onRemove={() => {}}
-                      canRemove={false}
-                    />
-                  ))}
+                  {existing.map((game, i) => {
+                    const marked = toDelete.has(game.matchId);
+                    return (
+                      <div key={game.id} className={`relative transition-opacity ${marked ? 'opacity-40' : ''}`}>
+                        <GameCard
+                          game={game}
+                          index={i}
+                          players={playerList}
+                          onChange={patch => !marked && updateExisting(game.id, patch)}
+                          onRemove={() => {}}
+                          canRemove={false}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => toggleDelete(game.matchId)}
+                          className={`absolute top-3 right-3 text-xs font-semibold px-2 py-1 rounded-lg transition-colors ${
+                            marked
+                              ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                              : 'bg-red-500/15 text-red-400 hover:bg-red-500/30'
+                          }`}
+                        >
+                          {marked ? 'Undo' : 'Delete'}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
