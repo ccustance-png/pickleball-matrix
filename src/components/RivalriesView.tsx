@@ -4,6 +4,28 @@ import { useState } from 'react';
 import Link from 'next/link';
 import type { Rivalry } from '@/app/rivalries/page';
 
+/** For doubles teams like "Cam Cook/Jordan Sterzick", returns ["Cam Cook", "Jordan Sterzick"]. */
+function splitTeam(name: string): string[] {
+  return name.includes('/') ? name.split('/').map((n) => n.trim()) : [name];
+}
+
+function TeamName({ name, align }: { name: string; align: 'left' | 'right' }) {
+  const parts = splitTeam(name);
+  return (
+    <div className={`flex flex-col gap-0.5 ${align === 'right' ? 'items-end' : 'items-start'}`}>
+      {parts.map((p) => (
+        <Link
+          key={p}
+          href={`/players/${encodeURIComponent(p)}`}
+          className="text-sm font-bold text-slate-100 hover:text-lime-400 transition-colors leading-tight"
+        >
+          {p}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 function RivalryCard({ r, rank }: { r: Rivalry; rank: number }) {
   const p1Pct = r.totalGames > 0 ? Math.round((r.player1Wins / r.totalGames) * 100) : 50;
   const p2Pct = 100 - p1Pct;
@@ -33,12 +55,7 @@ function RivalryCard({ r, rank }: { r: Rivalry; rank: number }) {
       {/* Players + wins */}
       <div className="flex items-center justify-between gap-4 mb-4">
         <div className="flex-1 text-left">
-          <Link
-            href={`/players/${encodeURIComponent(r.player1)}`}
-            className="text-base font-bold text-slate-100 hover:text-lime-400 transition-colors block truncate"
-          >
-            {r.player1}
-          </Link>
+          <TeamName name={r.player1} align="left" />
           <span className={`text-3xl font-black font-mono ${p1Pct >= 50 ? 'text-lime-400' : 'text-slate-400'}`}>
             {r.player1Wins}
           </span>
@@ -49,12 +66,7 @@ function RivalryCard({ r, rank }: { r: Rivalry; rank: number }) {
         </div>
 
         <div className="flex-1 text-right">
-          <Link
-            href={`/players/${encodeURIComponent(r.player2)}`}
-            className="text-base font-bold text-slate-100 hover:text-lime-400 transition-colors block truncate"
-          >
-            {r.player2}
-          </Link>
+          <TeamName name={r.player2} align="right" />
           <span className={`text-3xl font-black font-mono ${p2Pct > 50 ? 'text-lime-400' : 'text-slate-400'}`}>
             {r.player2Wins}
           </span>

@@ -1,3 +1,4 @@
+import { revalidatePath } from 'next/cache';
 import { appendMatch, saveMatchNote } from '@/lib/sheets';
 
 type GamePayload = {
@@ -80,6 +81,13 @@ export async function POST(req: Request) {
         });
       }
     }
+
+    // Bust Next.js data cache so new matches appear immediately everywhere
+    revalidatePath('/');
+    revalidatePath('/activities');
+    revalidatePath('/players');
+    revalidatePath('/stats');
+    revalidatePath('/rivalries');
 
     return Response.json({ sessionId: matchIds[0], matchIds });
   } catch (e) {

@@ -57,6 +57,28 @@ function doPost(e) {
     return json({ success: true });
   }
 
+  if (data.action === 'updateMatch') {
+    var sheet = ss.getSheetByName('SCORESHEET');
+    var rows = sheet.getDataRange().getValues();
+    for (var i = 1; i < rows.length; i++) {
+      if (Number(rows[i][0]) === Number(data.matchId)) {
+        var row = i + 1; // 1-indexed
+        sheet.getRange(row, 2).setValue(data.date);
+        sheet.getRange(row, 3).setValue(data.bracket);
+        sheet.getRange(row, 4).setValue(data.type);
+        sheet.getRange(row, 5).setValue(data.team1);
+        sheet.getRange(row, 6).setValue(data.team2);
+        sheet.getRange(row, 7).setValue(data.win);
+        sheet.getRange(row, 8).setValue(data.loss);
+        sheet.getRange(row, 9).setValue(data.team1Score);
+        sheet.getRange(row, 10).setValue(data.team2Score);
+        sheet.getRange(row, 11).setValue(data.players);
+        return json({ success: true });
+      }
+    }
+    return json({ error: 'Match not found' });
+  }
+
   // Match submission
   var sheet = ss.getSheetByName('SCORESHEET');
   var lastRow = sheet.getLastRow();

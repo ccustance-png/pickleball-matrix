@@ -42,15 +42,18 @@ export default async function ActivitiesPage() {
     if (m) sessionGroups.get(anchorId)!.push(m);
   }
 
-  // Build activity items — skip session-linked matches
+  // Build activity items — rich (session/standalone with notes) + plain (no note)
   type Item =
     | { kind: 'session'; anchor: MatchRow; note: MatchNote; matches: MatchRow[] }
-    | { kind: 'standalone'; match: MatchRow; note: MatchNote };
+    | { kind: 'standalone'; match: MatchRow; note: MatchNote }
+    | { kind: 'plain'; match: MatchRow };
 
   const items: Item[] = [];
+  const shownMatchIds = new Set<number>();
 
+  // First: note-based items (sessions and standalones that have real content)
   for (const note of notes) {
-    // Skip session-linked (they're folded into the session card)
+    // Skip session-linked back-references (they're folded into the session card)
     if (SID_RE.test(note.description ?? '')) continue;
 
     const match = matchMap[note.matchId];
@@ -60,13 +63,22 @@ export default async function ActivitiesPage() {
     if (!hasContent) continue;
 
     const linked = sessionGroups.get(note.matchId) ?? [];
+    const allMatches = [match, ...linked].sort((a, b) => a.matchId - b.matchId);
+    allMatches.forEach((m) => shownMatchIds.add(m.matchId));
+
     if (linked.length > 0) {
-      // Sort all games in session by matchId (chronological)
-      const allMatches = [match, ...linked].sort((a, b) => a.matchId - b.matchId);
       items.push({ kind: 'session', anchor: match, note, matches: allMatches });
     } else {
       items.push({ kind: 'standalone', match, note });
     }
+  }
+
+  // Second: plain matches from the last 30 days with no rich note
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  for (const match of matches) {
+    if (shownMatchIds.has(match.matchId)) continue;
+    if (parseDate(match.date) < thirtyDaysAgo) continue;
+    items.push({ kind: 'plain', match });
   }
 
   // Sort newest first
@@ -91,22 +103,34 @@ export default async function ActivitiesPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {items.map((item) =>
-            item.kind === 'session' ? (
-              <SessionActivityCard
-                key={item.anchor.matchId}
-                anchorMatch={item.anchor}
-                note={item.note}
-                matches={item.matches}
-              />
-            ) : (
+          {items.map((item) => {
+            if (item.kind === 'session') {
+              return (
+                <SessionActivityCard
+                  key={item.anchor.matchId}
+                  anchorMatch={item.anchor}
+                  note={item.note}
+                  matches={item.matches}
+                />
+              );
+            }
+            if (item.kind === 'standalone') {
+              return (
+                <MatchActivityCard
+                  key={item.match.matchId}
+                  match={item.match}
+                  note={item.note}
+                />
+              );
+            }
+            // Plain match — no note, just the result
+            return (
               <MatchActivityCard
                 key={item.match.matchId}
                 match={item.match}
-                note={item.note}
               />
-            )
-          )}
+            );
+          })}
         </div>
       )}
     </div>

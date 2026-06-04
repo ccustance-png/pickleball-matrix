@@ -299,6 +299,13 @@ export async function deleteMatch(matchId: number): Promise<void> {
   });
 }
 
+export async function updateMatch(match: MatchRow): Promise<void> {
+  await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'updateMatch', ...match }),
+  });
+}
+
 export async function saveMatchNote(note: MatchNote): Promise<void> {
   await fetch(scriptUrl(), {
     method: 'POST',

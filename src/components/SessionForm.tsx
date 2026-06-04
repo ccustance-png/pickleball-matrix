@@ -62,15 +62,12 @@ export default function SessionForm() {
   function addGame() {
     setGames((prev) => {
       const last = prev[prev.length - 1];
+      // Carry forward type and bracket only — not player names.
+      // Sessions are about same time/place; different games often have different players.
       return [...prev, {
         ...newGame(),
-        // carry forward players, type, and bracket — clear scores only
         bracket: last.bracket,
         type: last.type,
-        t1p1: last.t1p1,
-        t1p2: last.t1p2,
-        t2p1: last.t2p1,
-        t2p2: last.t2p2,
       }];
     });
   }

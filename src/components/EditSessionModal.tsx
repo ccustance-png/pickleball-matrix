@@ -3,29 +3,51 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import GameCard, { type GameEntry, newGame } from './GameCard';
-import type { MatchNote } from '@/lib/sheets';
+import GameCard, { type GameEntry, type Bracket, type MatchType, newGame } from './GameCard';
+import type { MatchNote, MatchRow } from '@/lib/sheets';
 
 type Props = {
   anchorId: number;
   sessionDate: string;   // raw sheet date string e.g. "5/28/25"
   note: MatchNote;
+  matches: MatchRow[];   // all games currently in this session
   onClose: () => void;
 };
 
 type Tab = 'games' | 'details';
 
-export default function EditSessionModal({ anchorId, sessionDate, note, onClose }: Props) {
+/** Convert a saved MatchRow back into an editable GameEntry. */
+type EditableGame = GameEntry & { matchId: number };
+
+function matchToEditable(m: MatchRow): EditableGame {
+  const t1 = m.team1.split('/').map((p) => p.trim());
+  const t2 = m.team2.split('/').map((p) => p.trim());
+  return {
+    id: String(m.matchId),
+    matchId: m.matchId,
+    bracket: (m.bracket.toUpperCase() === 'CASUAL' ? 'CASUAL' : 'COMPETITIVE') as Bracket,
+    type: m.type.toUpperCase() as MatchType,
+    t1p1: t1[0] ?? '',
+    t1p2: t1[1] ?? '',
+    t2p1: t2[0] ?? '',
+    t2p2: t2[1] ?? '',
+    score1: String(m.team1Score),
+    score2: String(m.team2Score),
+  };
+}
+
+export default function EditSessionModal({ anchorId, sessionDate, note, matches, onClose }: Props) {
   const router  = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [tab, setTab] = useState<Tab>('games');
+  const [tab, setTab] = useState<Tab>('details');
 
   // ── Games state ────────────────────────────────────────────────────────────
-  const [playerList, setPlayerList] = useState<string[]>([]);
-  const [games, setGames]           = useState<GameEntry[]>([newGame()]);
-  const [gamesStatus, setGamesStatus] = useState<'idle'|'loading'|'success'|'error'>('idle');
-  const [gamesError, setGamesError]   = useState('');
+  const [playerList, setPlayerList]     = useState<string[]>([]);
+  const [existing,   setExisting]       = useState<EditableGame[]>(() => matches.map(matchToEditable));
+  const [newGames,   setNewGames]       = useState<GameEntry[]>([]);
+  const [gamesStatus, setGamesStatus]   = useState<'idle'|'loading'|'success'|'error'>('idle');
+  const [gamesError,  setGamesError]    = useState('');
 
   // ── Note state ─────────────────────────────────────────────────────────────
   const [photoPreview, setPhotoPreview] = useState(note.photoUrl ?? '');
@@ -43,15 +65,93 @@ export default function EditSessionModal({ anchorId, sessionDate, note, onClose 
       .catch(() => {});
   }, []);
 
-  function updateGame(id: string, patch: Partial<GameEntry>) {
-    setGames(prev => prev.map(g => g.id === id ? { ...g, ...patch } : g));
+  // ── Existing game helpers ──────────────────────────────────────────────────
+  function updateExisting(id: string, patch: Partial<GameEntry>) {
+    setExisting(prev => prev.map(g => g.id === id ? { ...g, ...patch } : g));
   }
-  function removeGame(id: string) { setGames(prev => prev.filter(g => g.id !== id)); }
-  function addGame() {
-    setGames(prev => {
-      const last = prev[prev.length - 1];
-      return [...prev, { ...newGame(), bracket: last.bracket, type: last.type, t1p1: last.t1p1, t1p2: last.t1p2, t2p1: last.t2p1, t2p2: last.t2p2 }];
+
+  // ── New game helpers ───────────────────────────────────────────────────────
+  function addNewGame() {
+    setNewGames(prev => {
+      const last = prev[prev.length - 1] ?? existing[existing.length - 1];
+      return [...prev, { ...newGame(), bracket: last?.bracket ?? 'COMPETITIVE', type: last?.type ?? 'SINGLES' }];
     });
+  }
+  function updateNew(id: string, patch: Partial<GameEntry>) {
+    setNewGames(prev => prev.map(g => g.id === id ? { ...g, ...patch } : g));
+  }
+  function removeNew(id: string) { setNewGames(prev => prev.filter(g => g.id !== id)); }
+
+  // ── Validate all games ─────────────────────────────────────────────────────
+  function validateGames(games: GameEntry[], label: string): string | null {
+    for (let i = 0; i < games.length; i++) {
+      const g = games[i];
+      const t1 = g.type === 'SINGLES' ? [g.t1p1] : [g.t1p1, g.t1p2];
+      const t2 = g.type === 'SINGLES' ? [g.t2p1] : [g.t2p1, g.t2p2];
+      if (t1.some(p => !p.trim()) || t2.some(p => !p.trim()))
+        return `${label} ${i + 1}: all player names are required.`;
+      if (!g.score1 || !g.score2) return `${label} ${i + 1}: both scores are required.`;
+      if (Number(g.score1) === Number(g.score2)) return `${label} ${i + 1}: scores can't be tied.`;
+    }
+    return null;
+  }
+
+  async function saveGames() {
+    setGamesError('');
+    const existingErr = validateGames(existing, 'Game');
+    if (existingErr) { setGamesError(existingErr); return; }
+    if (newGames.length > 0) {
+      const newErr = validateGames(newGames, 'New game');
+      if (newErr) { setGamesError(newErr); return; }
+    }
+
+    setGamesStatus('loading');
+    try {
+      // 1. PUT all existing games (updates any changed fields)
+      await Promise.all(
+        existing.map((g) =>
+          fetch(`/api/match/${g.matchId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date: sessionDate,
+              bracket: g.bracket,
+              type: g.type,
+              team1Players: g.type === 'SINGLES' ? [g.t1p1] : [g.t1p1, g.t1p2],
+              team2Players: g.type === 'SINGLES' ? [g.t2p1] : [g.t2p1, g.t2p2],
+              team1Score: Number(g.score1),
+              team2Score: Number(g.score2),
+            }),
+          }).then(r => { if (!r.ok) throw new Error(`Failed to update game ${g.matchId}`); })
+        )
+      );
+
+      // 2. POST any new games linked to this session
+      if (newGames.length > 0) {
+        const res = await fetch(`/api/sessions/${anchorId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: sessionDate,
+            games: newGames.map(g => ({
+              bracket: g.bracket,
+              type: g.type,
+              team1Players: g.type === 'SINGLES' ? [g.t1p1] : [g.t1p1, g.t1p2],
+              team2Players: g.type === 'SINGLES' ? [g.t2p1] : [g.t2p1, g.t2p2],
+              team1Score: Number(g.score1),
+              team2Score: Number(g.score2),
+            })),
+          }),
+        });
+        if (!res.ok) throw new Error('Failed to save new games');
+      }
+
+      setGamesStatus('success');
+      setTimeout(() => { onClose(); router.refresh(); }, 1200);
+    } catch (err) {
+      setGamesError(err instanceof Error ? err.message : 'Unknown error');
+      setGamesStatus('error');
+    }
   }
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -93,44 +193,6 @@ export default function EditSessionModal({ anchorId, sessionDate, note, onClose 
     }
   }
 
-  async function saveGames() {
-    setGamesError('');
-    for (let i = 0; i < games.length; i++) {
-      const g = games[i];
-      const t1 = g.type === 'SINGLES' ? [g.t1p1] : [g.t1p1, g.t1p2];
-      const t2 = g.type === 'SINGLES' ? [g.t2p1] : [g.t2p1, g.t2p2];
-      if (t1.some(p => !p.trim()) || t2.some(p => !p.trim())) { setGamesError(`Game ${i+1}: all player names required.`); return; }
-      if (!g.score1 || !g.score2) { setGamesError(`Game ${i+1}: both scores required.`); return; }
-      if (Number(g.score1) === Number(g.score2)) { setGamesError(`Game ${i+1}: scores can't be tied.`); return; }
-    }
-
-    setGamesStatus('loading');
-    try {
-      const res = await fetch(`/api/sessions/${anchorId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: sessionDate,
-          games: games.map(g => ({
-            bracket: g.bracket,
-            type: g.type,
-            team1Players: g.type === 'SINGLES' ? [g.t1p1] : [g.t1p1, g.t1p2],
-            team2Players: g.type === 'SINGLES' ? [g.t2p1] : [g.t2p1, g.t2p2],
-            team1Score: Number(g.score1),
-            team2Score: Number(g.score2),
-          })),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Failed to save games');
-      setGamesStatus('success');
-      setTimeout(() => { onClose(); router.refresh(); }, 1200);
-    } catch (err) {
-      setGamesError(err instanceof Error ? err.message : 'Unknown error');
-      setGamesStatus('error');
-    }
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
@@ -147,7 +209,7 @@ export default function EditSessionModal({ anchorId, sessionDate, note, onClose 
 
         {/* Tabs */}
         <div className="flex gap-1 px-4 pt-3 pb-0 shrink-0">
-          {([['games', 'Add Games'], ['details', 'Session Details']] as [Tab, string][]).map(([id, label]) => (
+          {([['games', 'Games'], ['details', 'Session Details']] as [Tab, string][]).map(([id, label]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -163,29 +225,57 @@ export default function EditSessionModal({ anchorId, sessionDate, note, onClose 
         {/* Content */}
         <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
 
-          {/* ── Add Games tab ──────────────────────────────────────────── */}
+          {/* ── Games tab ─────────────────────────────────────────────── */}
           {tab === 'games' && (
             <>
-              <p className="text-xs text-slate-500">Games added here will be linked to this session and recorded in the sheet.</p>
+              {/* Existing games */}
+              {existing.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Existing games — edit as needed
+                  </p>
+                  {existing.map((game, i) => (
+                    <GameCard
+                      key={game.id}
+                      game={game}
+                      index={i}
+                      players={playerList}
+                      onChange={patch => updateExisting(game.id, patch)}
+                      onRemove={() => {}}
+                      canRemove={false}
+                    />
+                  ))}
+                </div>
+              )}
 
-              {games.map((game, i) => (
-                <GameCard
-                  key={game.id}
-                  game={game}
-                  index={i}
-                  players={playerList}
-                  onChange={patch => updateGame(game.id, patch)}
-                  onRemove={() => removeGame(game.id)}
-                  canRemove={games.length > 1}
-                />
-              ))}
+              {/* Divider + new games */}
+              {newGames.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 pt-2">
+                    <div className="h-px flex-1 bg-slate-800" />
+                    <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">New games</span>
+                    <div className="h-px flex-1 bg-slate-800" />
+                  </div>
+                  {newGames.map((game, i) => (
+                    <GameCard
+                      key={game.id}
+                      game={game}
+                      index={existing.length + i}
+                      players={playerList}
+                      onChange={patch => updateNew(game.id, patch)}
+                      onRemove={() => removeNew(game.id)}
+                      canRemove={true}
+                    />
+                  ))}
+                </div>
+              )}
 
               <button
                 type="button"
-                onClick={addGame}
+                onClick={addNewGame}
                 className="w-full py-3 border-2 border-dashed border-slate-700 hover:border-lime-500 text-slate-500 hover:text-lime-400 rounded-xl text-sm font-semibold transition-colors"
               >
-                + Add Another Game
+                + Add Game to Session
               </button>
 
               {gamesError && (
@@ -200,7 +290,7 @@ export default function EditSessionModal({ anchorId, sessionDate, note, onClose 
                   disabled={gamesStatus === 'loading'}
                   className="w-full py-3 bg-lime-500 hover:bg-lime-400 disabled:opacity-50 text-slate-900 font-bold rounded-lg transition-colors"
                 >
-                  {gamesStatus === 'loading' ? 'Saving…' : `Add ${games.length} Game${games.length > 1 ? 's' : ''} to Session`}
+                  {gamesStatus === 'loading' ? 'Saving…' : 'Save Games'}
                 </button>
               )}
             </>

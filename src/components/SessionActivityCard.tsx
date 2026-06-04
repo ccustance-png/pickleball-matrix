@@ -208,6 +208,7 @@ export default function SessionActivityCard({ anchorMatch, note, matches, name }
           anchorId={anchorMatch.matchId}
           sessionDate={anchorMatch.date}
           note={note}
+          matches={matches}
           onClose={() => setEditOpen(false)}
         />
       )}
