@@ -7,10 +7,18 @@ import type { EloEntry } from '@/lib/sheets';
 type WLRecord = { wins: number; losses: number };
 type WLMap = Record<string, WLRecord>;
 
+const PROVISIONAL_THRESHOLD = 10;
+
 function EloTable({ players, wlMap }: { players: EloEntry[]; wlMap: WLMap }) {
-  if (players.length === 0) return <p className="text-slate-500 text-sm py-4">No ELO data yet.</p>;
-  const max = players[0].elo;
-  const min = Math.min(...players.map((p) => p.elo));
+  // Only show players who have hit the provisional threshold
+  const ranked = players.filter((p) => {
+    const r = wlMap[p.name.toUpperCase()] ?? wlMap[p.name] ?? { wins: 0, losses: 0 };
+    return (r.wins + r.losses) >= PROVISIONAL_THRESHOLD;
+  });
+
+  if (ranked.length === 0) return <p className="text-slate-500 text-sm py-4">No ranked players yet — need {PROVISIONAL_THRESHOLD} games to appear here.</p>;
+  const max = ranked[0].elo;
+  const min = Math.min(...ranked.map((p) => p.elo));
   const range = max - min || 1;
 
   return (
@@ -26,7 +34,7 @@ function EloTable({ players, wlMap }: { players: EloEntry[]; wlMap: WLMap }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-800">
-          {players.map((p, i) => {
+          {ranked.map((p, i) => {
             const pct = Math.round(((p.elo - min) / range) * 100);
             const record = wlMap[p.name] ?? { wins: 0, losses: 0 };
             return (
