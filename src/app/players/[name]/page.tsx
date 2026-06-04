@@ -104,6 +104,20 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
           {profile?.bio && (
             <p className="text-slate-400 text-sm mt-1">{profile.bio}</p>
           )}
+          {profile?.location && (
+            <a
+              href={`https://www.google.com/maps/search/${encodeURIComponent(profile.location)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-lime-400 transition-colors mt-1"
+            >
+              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+              </svg>
+              {profile.location}
+            </a>
+          )}
           <div className="mt-2 flex items-center gap-4 flex-wrap">
             <RecordBadge wins={singlesWins + doublesWins} losses={playerMatches.length - singlesWins - doublesWins} />
             <PickleJarButton total={pickles.total} log={pickleLog} />

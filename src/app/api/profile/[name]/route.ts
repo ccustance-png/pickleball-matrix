@@ -9,7 +9,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ name: s
 
 export async function PUT(req: Request, { params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
-  const { photoUrl, bio, firstName, lastName } = await req.json();
-  await upsertProfile(decodeURIComponent(name).toUpperCase(), photoUrl ?? '', bio ?? '', firstName, lastName);
+  const { photoUrl, bio, firstName, lastName, location } = await req.json();
+  await upsertProfile(decodeURIComponent(name).toUpperCase(), photoUrl ?? '', bio ?? '', firstName, lastName, location);
   return NextResponse.json({ success: true });
 }

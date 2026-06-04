@@ -20,13 +20,13 @@ function doGet(e) {
   if (action === 'getProfile') {
     const player = (e.parameter.player || '').trim().toUpperCase();
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('PROFILES');
-    if (!sheet) return json({ player: '', photoUrl: '', bio: '', googleEmail: '', firstName: '', lastName: '' });
+    if (!sheet) return json({ player: '', photoUrl: '', bio: '', googleEmail: '', firstName: '', lastName: '', location: '' });
     const rows = sheet.getDataRange().getValues();
     for (let i = 1; i < rows.length; i++) {
       if ((rows[i][0] || '').toString().trim().toUpperCase() === player)
-        return json({ player: rows[i][0], photoUrl: rows[i][1] || '', bio: rows[i][2] || '', googleEmail: rows[i][3] || '', firstName: rows[i][4] || '', lastName: rows[i][5] || '' });
+        return json({ player: rows[i][0], photoUrl: rows[i][1] || '', bio: rows[i][2] || '', googleEmail: rows[i][3] || '', firstName: rows[i][4] || '', lastName: rows[i][5] || '', location: rows[i][6] || '' });
     }
-    return json({ player: '', photoUrl: '', bio: '', googleEmail: '', firstName: '', lastName: '' });
+    return json({ player: '', photoUrl: '', bio: '', googleEmail: '', firstName: '', lastName: '', location: '' });
   }
 
   if (action === 'getMatchNotes') {
@@ -109,10 +109,11 @@ function doPost(e) {
         sheet.getRange(i + 1, 3).setValue(data.bio !== undefined ? data.bio : rows[i][2]);
         if (data.firstName !== undefined) sheet.getRange(i + 1, 5).setValue(data.firstName);
         if (data.lastName  !== undefined) sheet.getRange(i + 1, 6).setValue(data.lastName);
+        if (data.location  !== undefined) sheet.getRange(i + 1, 7).setValue(data.location);
         return json({ ok: true });
       }
     }
-    sheet.appendRow([data.player, data.photoUrl || '', data.bio || '', '', data.firstName || '', data.lastName || '']);
+    sheet.appendRow([data.player, data.photoUrl || '', data.bio || '', '', data.firstName || '', data.lastName || '', data.location || '']);
     return json({ ok: true });
   }
 

@@ -79,6 +79,7 @@ export type PlayerProfile = {
   googleEmail: string;
   firstName?: string;
   lastName?: string;
+  location?: string;
 };
 
 /** Returns "First Last" if set, otherwise falls back to the raw username. */
@@ -103,6 +104,7 @@ export async function getAllProfilesMap(): Promise<Record<string, PlayerProfile>
       googleEmail:row[3]?.toString() ?? '',
       firstName:  row[4]?.toString() ?? '',
       lastName:   row[5]?.toString() ?? '',
+      location:   row[6]?.toString() ?? '',
     };
   });
   return map;
@@ -126,10 +128,11 @@ export async function upsertProfile(
   bio: string,
   firstName?: string,
   lastName?: string,
+  location?: string,
 ): Promise<void> {
   await fetch(scriptUrl(), {
     method: 'POST',
-    body: JSON.stringify({ action: 'upsertProfile', player, photoUrl, bio, firstName, lastName }),
+    body: JSON.stringify({ action: 'upsertProfile', player, photoUrl, bio, firstName, lastName, location }),
   });
 }
 
