@@ -145,6 +145,43 @@ function computePlayerOfMonth(matches: MatchRow[]): { name: string; wins: number
   return { name, wins: w, type: 'wins this month' };
 }
 
+function parseMatchDate(d: string): number {
+  const [m, dy, y] = d.split('/').map(Number);
+  return new Date(2000 + (y || 0), (m || 1) - 1, dy || 1).getTime();
+}
+
+/** Top 5 players by competitive wins in the last 7 days. */
+function computeWeeklyLeaders(matches: MatchRow[]): { name: string; wins: number }[] {
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const wins: Record<string, number> = {};
+  for (const m of matches) {
+    if (m.bracket.toUpperCase() === 'CASUAL') continue;
+    if (parseMatchDate(m.date) < cutoff) continue;
+    for (const p of m.win.split('/').map(p => p.trim()).filter(Boolean)) {
+      wins[p] = (wins[p] ?? 0) + 1;
+    }
+  }
+  return Object.entries(wins)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, w]) => ({ name, wins: w }));
+}
+
+/** Group-wide summary stats. */
+function computeGroupStats(matches: MatchRow[]) {
+  const players = new Set(
+    matches.flatMap(m => m.players.split('/').map(p => p.trim()).filter(Boolean))
+  );
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const thisMonth = matches.filter(m => parseMatchDate(m.date) >= monthStart).length;
+  return {
+    totalMatches: matches.length,
+    totalPlayers: players.size,
+    thisMonth,
+  };
+}
+
 export const revalidate = 15;
 
 export default async function HomePage() {
@@ -158,6 +195,8 @@ export default async function HomePage() {
   const singlesStreaks = computeStreaks(matches, 'SINGLES');
   const doublesStreaks = computeStreaks(matches, 'DOUBLES');
   const playerOfMonth = computePlayerOfMonth(matches);
+  const weeklyLeaders = computeWeeklyLeaders(matches);
+  const groupStats    = computeGroupStats(matches);
 
   // Most recent close matches (decided by 2 pts or less), up to 5
   const nailBiters = [...matches]
@@ -193,6 +232,20 @@ export default async function HomePage() {
       >
         + Log Session
       </Link>
+
+      {/* Group stats */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Total Matches', value: groupStats.totalMatches },
+          { label: 'Players',       value: groupStats.totalPlayers },
+          { label: 'This Month',    value: groupStats.thisMonth },
+        ].map(({ label, value }) => (
+          <div key={label} className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-3 text-center">
+            <p className="text-2xl font-black text-lime-400 font-mono leading-none">{value}</p>
+            <p className="text-xs text-slate-500 mt-1 leading-tight">{label}</p>
+          </div>
+        ))}
+      </div>
 
       {/* Player of the Month */}
       {playerOfMonth && (
@@ -268,6 +321,31 @@ export default async function HomePage() {
 
       {/* Hot Right Now */}
       <HotRightNow singles={hotSingles} doubles={hotDoubles} />
+
+      {/* Weekly leaderboard */}
+      {weeklyLeaders.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-slate-200 mb-1">📅 This Week</h2>
+          <p className="text-xs text-slate-500 mb-4">Most competitive wins in the last 7 days</p>
+          <div className="rounded-xl border border-slate-800 overflow-hidden">
+            {weeklyLeaders.map((p, i) => (
+              <div key={p.name} className="flex items-center gap-3 px-4 py-3 border-b border-slate-800 last:border-0 bg-slate-950 hover:bg-slate-900 transition-colors">
+                <span className="text-slate-600 font-mono text-xs w-5 shrink-0">{i + 1}</span>
+                <Link
+                  href={`/players/${encodeURIComponent(p.name)}`}
+                  className="flex-1 font-semibold text-sm text-slate-100 hover:text-lime-400 transition-colors truncate"
+                >
+                  {p.name}
+                </Link>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-lime-400 font-black font-mono text-lg leading-none">{p.wins}</span>
+                  <span className="text-xs text-slate-500">W</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

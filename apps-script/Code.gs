@@ -80,6 +80,20 @@ function doGet(e) {
     return json(result);
   }
 
+  if (action === 'getPushSubscriptions') {
+    const players = (e.parameter.players || '').split(',').map(p => p.trim().toUpperCase()).filter(Boolean);
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('PUSH_SUBSCRIPTIONS');
+    if (!sheet || !players.length) return json([]);
+    const rows = sheet.getDataRange().getValues();
+    const subs = [];
+    for (let i = 1; i < rows.length; i++) {
+      if (players.includes((rows[i][0] || '').toString().trim().toUpperCase()) && rows[i][1]) {
+        subs.push(rows[i][1].toString());
+      }
+    }
+    return json(subs);
+  }
+
   if (action === 'getChallenges') {
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('CHALLENGES');
     if (!sheet) return json([]);
@@ -98,6 +112,25 @@ function doGet(e) {
 function doPost(e) {
   const data = JSON.parse(e.postData.contents);
   const ss = SpreadsheetApp.openById(SHEET_ID);
+
+  if (data.action === 'savePushSubscription') {
+    let sheet = ss.getSheetByName('PUSH_SUBSCRIPTIONS');
+    if (!sheet) {
+      sheet = ss.insertSheet('PUSH_SUBSCRIPTIONS');
+      sheet.appendRow(['playerName', 'subscription', 'updatedAt']);
+    }
+    const player = (data.playerName || '').trim().toUpperCase();
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][0] || '').toString().trim().toUpperCase() === player) {
+        sheet.getRange(i + 1, 2).setValue(data.subscription);
+        sheet.getRange(i + 1, 3).setValue(new Date().toISOString());
+        return json({ ok: true });
+      }
+    }
+    sheet.appendRow([player, data.subscription, new Date().toISOString()]);
+    return json({ ok: true });
+  }
 
   if (data.action === 'upsertProfile') {
     const sheet = ss.getSheetByName('PROFILES');

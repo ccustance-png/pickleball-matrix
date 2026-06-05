@@ -319,6 +319,22 @@ export async function deleteMatch(matchId: number): Promise<void> {
   });
 }
 
+export async function savePushSubscription(playerName: string, subscription: string): Promise<void> {
+  await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'savePushSubscription', playerName, subscription }),
+  });
+}
+
+export async function getPushSubscriptionsForPlayers(playerNames: string[]): Promise<string[]> {
+  try {
+    const url = `${scriptUrl()}?action=getPushSubscriptions&players=${encodeURIComponent(playerNames.join(','))}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch { return []; }
+}
+
 export async function updateMatch(match: MatchRow): Promise<void> {
   await fetch(scriptUrl(), {
     method: 'POST',

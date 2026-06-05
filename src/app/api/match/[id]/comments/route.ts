@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getMatchComments, addMatchComment } from '@/lib/sheets';
+import { getMatchComments, addMatchComment, getAllMatches } from '@/lib/sheets';
+import { notifyPlayers } from '@/lib/push';
 
 export async function GET(
   _req: Request,
@@ -30,12 +31,20 @@ export async function POST(
     return Response.json({ error: 'Comment too long' }, { status: 400 });
   }
 
-  await addMatchComment(
-    Number(id),
-    session.user.email,
-    session.user.name ?? session.user.email,
-    text.trim()
-  );
+  const authorName = session.user.name ?? session.user.email;
+  await addMatchComment(Number(id), session.user.email, authorName, text.trim());
+
+  // Notify the players in this match (fire-and-forget)
+  getAllMatches().then(matches => {
+    const match = matches.find(m => m.matchId === Number(id));
+    if (!match) return;
+    const players = match.players.split('/').map(p => p.trim()).filter(Boolean);
+    notifyPlayers(players, {
+      title: `💬 ${authorName} commented`,
+      body: text.trim().slice(0, 80),
+      url: '/activities',
+    });
+  }).catch(() => {});
 
   return Response.json({ success: true });
 }

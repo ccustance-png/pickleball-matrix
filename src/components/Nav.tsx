@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { useState, useEffect, useRef } from 'react';
 import SearchModal from './SearchModal';
+import NotificationBell from './NotificationBell';
 
 const links = [
   { href: '/', label: 'Home' },
@@ -57,8 +58,9 @@ export default function Nav() {
           <span>Pickleball ELO</span>
         </Link>
 
-        {/* Search + Hamburger */}
+        {/* Search + Notifications + Hamburger */}
         <div className="flex items-center gap-2">
+        <NotificationBell />
         {/* Search button */}
         <button
           onClick={() => setSearchOpen(true)}

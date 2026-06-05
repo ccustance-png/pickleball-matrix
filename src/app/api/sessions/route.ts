@@ -1,5 +1,6 @@
 import { revalidatePath } from 'next/cache';
 import { appendMatch, saveMatchNote } from '@/lib/sheets';
+import { notifyPlayers } from '@/lib/push';
 
 type GamePayload = {
   bracket: 'COMPETITIVE' | 'CASUAL';
@@ -81,6 +82,16 @@ export async function POST(req: Request) {
         });
       }
     }
+
+    // Notify all players in the session (fire-and-forget)
+    const allPlayers = Array.from(new Set(
+      games.flatMap(g => [...g.team1Players, ...g.team2Players]).map(p => p.toUpperCase().trim())
+    ));
+    notifyPlayers(allPlayers, {
+      title: '🏓 Match logged!',
+      body: `${allPlayers.slice(0, 3).join(', ')} · ${games.length} game${games.length > 1 ? 's' : ''} on ${date}`,
+      url: '/activities',
+    }).catch(() => {}); // never let push errors affect the response
 
     // Bust Next.js data cache so new matches appear immediately everywhere
     revalidatePath('/');

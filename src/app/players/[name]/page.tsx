@@ -56,6 +56,45 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
   const singlesWins = singlesMatches.filter((m) => m.win.split('/').map((p) => p.trim()).includes(name)).length;
   const doublesWins = doublesMatches.filter((m) => m.win.split('/').map((p) => p.trim()).includes(name)).length;
 
+  // All-time personal records
+  function bestStreak(ms: typeof playerMatches) {
+    let best = 0, cur = 0, lastKind = '';
+    for (const m of ms) {
+      const won = m.win.split('/').map(p => p.trim()).includes(name);
+      const kind = won ? 'W' : 'L';
+      if (kind === 'W') { cur = lastKind === 'W' ? cur + 1 : 1; best = Math.max(best, cur); }
+      else { cur = 0; }
+      lastKind = kind;
+    }
+    return best;
+  }
+
+  function bestMonth(ms: typeof playerMatches) {
+    const byMonth: Record<string, number> = {};
+    for (const m of ms) {
+      const won = m.win.split('/').map(p => p.trim()).includes(name);
+      if (!won) continue;
+      const [mo, , yr] = m.date.split('/').map(Number);
+      const key = `${yr}-${mo}`;
+      byMonth[key] = (byMonth[key] ?? 0) + 1;
+    }
+    return Math.max(0, ...Object.values(byMonth));
+  }
+
+  function mostInDay(ms: typeof playerMatches) {
+    const byDay: Record<string, number> = {};
+    for (const m of ms) { byDay[m.date] = (byDay[m.date] ?? 0) + 1; }
+    return Math.max(0, ...Object.values(byDay));
+  }
+
+  const compMatches = playerMatches.filter(m => m.bracket.toUpperCase() !== 'CASUAL');
+  const personalRecords = {
+    bestWinStreak: bestStreak(compMatches),
+    bestMonth:     bestMonth(compMatches),
+    mostInDay:     mostInDay(playerMatches),
+    totalMatches:  playerMatches.length,
+  };
+
   // Competitive vs Casual split
   const compSingles  = singlesMatches.filter(m => m.bracket.toUpperCase() !== 'CASUAL');
   const compDoubles  = doublesMatches.filter(m => m.bracket.toUpperCase() !== 'CASUAL');
@@ -215,6 +254,37 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {singlesMatches.length >= 3 && <EloChart matches={matches} playerName={name} type="SINGLES" />}
           {doublesMatches.length >= 3 && <EloChart matches={matches} playerName={name} type="DOUBLES" />}
+        </div>
+      )}
+
+      {/* All-time personal records */}
+      {personalRecords.totalMatches >= 3 && (
+        <div>
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Personal Records</h2>
+          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-center">
+              <dd className="text-2xl font-black text-lime-400 font-mono leading-none">{personalRecords.totalMatches}</dd>
+              <dt className="text-xs text-slate-500 mt-1">Total Games</dt>
+            </div>
+            {personalRecords.bestWinStreak >= 2 && (
+              <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-center">
+                <dd className="text-2xl font-black text-lime-400 font-mono leading-none">W{personalRecords.bestWinStreak}</dd>
+                <dt className="text-xs text-slate-500 mt-1">Best Streak</dt>
+              </div>
+            )}
+            {personalRecords.bestMonth >= 3 && (
+              <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-center">
+                <dd className="text-2xl font-black text-lime-400 font-mono leading-none">{personalRecords.bestMonth}</dd>
+                <dt className="text-xs text-slate-500 mt-1">Best Month</dt>
+              </div>
+            )}
+            {personalRecords.mostInDay >= 3 && (
+              <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-center">
+                <dd className="text-2xl font-black text-lime-400 font-mono leading-none">{personalRecords.mostInDay}</dd>
+                <dt className="text-xs text-slate-500 mt-1">Most in a Day</dt>
+              </div>
+            )}
+          </dl>
         </div>
       )}
 
