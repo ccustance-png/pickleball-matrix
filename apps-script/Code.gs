@@ -80,6 +80,23 @@ function doGet(e) {
     return json(result);
   }
 
+  if (action === 'getFriends') {
+    const player = (e.parameter.player || '').trim().toUpperCase();
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('FRIENDS');
+    if (!sheet) return json([]);
+    const rows = sheet.getDataRange().getValues();
+    const result = [];
+    for (let i = 1; i < rows.length; i++) {
+      if (!rows[i][0]) continue;
+      const from = (rows[i][1] || '').toString().trim().toUpperCase();
+      const to   = (rows[i][2] || '').toString().trim().toUpperCase();
+      if (from === player || to === player) {
+        result.push({ requestId: rows[i][0], fromPlayer: rows[i][1], toPlayer: rows[i][2], status: rows[i][3], createdAt: rows[i][4] });
+      }
+    }
+    return json(result);
+  }
+
   if (action === 'getPushSubscriptions') {
     const players = (e.parameter.players || '').split(',').map(p => p.trim().toUpperCase()).filter(Boolean);
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('PUSH_SUBSCRIPTIONS');
@@ -112,6 +129,41 @@ function doGet(e) {
 function doPost(e) {
   const data = JSON.parse(e.postData.contents);
   const ss = SpreadsheetApp.openById(SHEET_ID);
+
+  if (data.action === 'sendFriendRequest') {
+    let sheet = ss.getSheetByName('FRIENDS');
+    if (!sheet) {
+      sheet = ss.insertSheet('FRIENDS');
+      sheet.appendRow(['requestId','fromPlayer','toPlayer','status','createdAt']);
+    }
+    // Check for existing request between these two players
+    const rows = sheet.getDataRange().getValues();
+    const from = (data.fromPlayer || '').toString().trim().toUpperCase();
+    const to   = (data.toPlayer   || '').toString().trim().toUpperCase();
+    for (let i = 1; i < rows.length; i++) {
+      const rf = (rows[i][1] || '').toString().trim().toUpperCase();
+      const rt = (rows[i][2] || '').toString().trim().toUpperCase();
+      if ((rf === from && rt === to) || (rf === to && rt === from)) {
+        return json({ requestId: rows[i][0], existing: true });
+      }
+    }
+    const requestId = Utilities.getUuid();
+    sheet.appendRow([requestId, data.fromPlayer, data.toPlayer, 'PENDING', new Date().toISOString()]);
+    return json({ requestId });
+  }
+
+  if (data.action === 'updateFriendRequest') {
+    const sheet = ss.getSheetByName('FRIENDS');
+    if (!sheet) return json({ ok: false });
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === data.requestId) {
+        sheet.getRange(i + 1, 4).setValue(data.status);
+        return json({ ok: true });
+      }
+    }
+    return json({ ok: false });
+  }
 
   if (data.action === 'savePushSubscription') {
     let sheet = ss.getSheetByName('PUSH_SUBSCRIPTIONS');

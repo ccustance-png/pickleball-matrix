@@ -319,6 +319,38 @@ export async function deleteMatch(matchId: number): Promise<void> {
   });
 }
 
+export type FriendRequest = {
+  requestId: string;
+  fromPlayer: string;
+  toPlayer: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+  createdAt: string;
+};
+
+export async function getFriendsForPlayer(playerName: string): Promise<FriendRequest[]> {
+  try {
+    const url = `${scriptUrl()}?action=getFriends&player=${encodeURIComponent(playerName)}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch { return []; }
+}
+
+export async function sendFriendRequest(fromPlayer: string, toPlayer: string): Promise<{ requestId: string }> {
+  const res = await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'sendFriendRequest', fromPlayer, toPlayer }),
+  });
+  return res.json();
+}
+
+export async function updateFriendRequest(requestId: string, status: 'ACCEPTED' | 'DECLINED'): Promise<void> {
+  await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'updateFriendRequest', requestId, status }),
+  });
+}
+
 export async function savePushSubscription(playerName: string, subscription: string): Promise<void> {
   await fetch(scriptUrl(), {
     method: 'POST',

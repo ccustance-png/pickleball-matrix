@@ -3,12 +3,14 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getAllMatches, getTabRows, tabToObjects, getProfile, getEloRankings, getMatchNotes, getDisplayName } from '@/lib/sheets';
+import { getAllMatches, getTabRows, tabToObjects, getProfile, getEloRankings, getMatchNotes, getDisplayName, getFriendsForPlayer } from '@/lib/sheets';
 import { computePlayerData } from '@/lib/badges';
 import ClaimButton from '@/components/ClaimButton';
 import ProfileTabs from '@/components/ProfileTabs';
 import PickleJarButton from '@/components/PickleJarButton';
 import EloChart from '@/components/EloChart';
+import FriendButton from '@/components/FriendButton';
+import FriendRequests from '@/components/FriendRequests';
 
 export const revalidate = 15;
 
@@ -30,13 +32,14 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
   const { name: rawName } = await params;
   const name = decodeURIComponent(rawName).toUpperCase();
 
-  const [matches, singlesRows, doublesRows, eloRankings, profile, session] = await Promise.all([
+  const [matches, singlesRows, doublesRows, eloRankings, profile, session, friendData] = await Promise.all([
     getAllMatches().catch(() => []),
     getTabRows('SINGLES').catch(() => []),
     getTabRows('DOUBLES').catch(() => []),
     getEloRankings().catch(() => ({ singles: [], doubles: [] })),
     getProfile(name),
     getServerSession(authOptions),
+    getFriendsForPlayer(name).catch(() => []),
   ]);
 
   const playerMatches = matches.filter((m) =>
@@ -50,6 +53,26 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
 
   const isClaimed = !!profile?.googleEmail;
   const isOwner = !!session?.user?.email && session.user.email === profile?.googleEmail;
+
+  // Logged-in user's player name (for friend button)
+  const allProfiles = await getTabRows('PROFILES').catch(() => [] as string[][]);
+  const myProfile = session?.user?.email
+    ? allProfiles.slice(1).find(r => (r[3] ?? '').toString().trim() === session.user!.email)
+    : null;
+  const myPlayerName = myProfile?.[0]?.toString().trim() ?? null;
+
+  // Friends: requests TO this player (incoming) and FROM this player (outgoing accepted)
+  const allFriendData = await getFriendsForPlayer(name).catch(() => [] as typeof friendData);
+  const incomingRequests = allFriendData.filter(r => r.toPlayer.toUpperCase() === name);
+  const acceptedFriends  = allFriendData.filter(r => r.fromPlayer.toUpperCase() === name && r.status === 'ACCEPTED');
+
+  // Find the specific request between logged-in user and this profile (for FriendButton)
+  const existingRequest = myPlayerName
+    ? allFriendData.find(r =>
+        (r.fromPlayer.toUpperCase() === myPlayerName.toUpperCase() && r.toPlayer.toUpperCase() === name) ||
+        (r.toPlayer.toUpperCase() === myPlayerName.toUpperCase() && r.fromPlayer.toUpperCase() === name)
+      ) ?? null
+    : null;
 
   const singlesMatches = playerMatches.filter((m) => m.type === 'SINGLES');
   const doublesMatches = playerMatches.filter((m) => m.type === 'DOUBLES');
@@ -178,6 +201,11 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
             {!isClaimed && (
               <ClaimButton name={name} signedIn={!!session} />
             )}
+            <FriendButton
+              targetPlayer={name}
+              myPlayer={myPlayerName}
+              existingRequest={existingRequest}
+            />
           </div>
           {profile?.bio && (
             <p className="text-slate-400 text-sm mt-1">{profile.bio}</p>
@@ -366,6 +394,12 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
           </div>
         </div>
       )}
+
+      {/* Friend requests + friends list (own profile sees incoming requests; everyone sees friends) */}
+      <FriendRequests
+        incoming={isOwner ? incomingRequests : []}
+        friends={acceptedFriends}
+      />
 
       <ProfileTabs
         name={name}
