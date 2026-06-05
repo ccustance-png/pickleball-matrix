@@ -46,7 +46,10 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
     m.players.split('/').map((p) => p.trim()).includes(name)
   );
 
-  if (playerMatches.length === 0 && matches.length > 0) return notFound();
+  // Only 404 if the player doesn't exist in the profiles sheet AND has no matches
+  // (allows claimed profiles with 0 games to still see their profile)
+  const profileExists = !!profile?.player || !!profile?.googleEmail;
+  if (playerMatches.length === 0 && matches.length > 0 && !profileExists) return notFound();
 
   const matchNotes = await getMatchNotes(playerMatches.map((m) => m.matchId)).catch(() => ({}));
   const { badges: earnedBadges, pickles, pickleLog, eloChanges } = computePlayerData(matches, name, matchNotes);
