@@ -85,9 +85,9 @@ export default function SessionForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Upload failed');
       setPhotoUrl(data.url);
-    } catch {
+    } catch (err) {
       setPhotoPreview('');
-      setError('Photo upload failed');
+      setError(err instanceof Error ? err.message : 'Photo upload failed');
     } finally {
       setUploading(false);
     }

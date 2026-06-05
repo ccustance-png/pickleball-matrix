@@ -8,6 +8,13 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === 'development', // skip SW in dev to avoid confusion
   workboxOptions: {
     disableDevLogs: true,
+    // Never let the service worker touch API routes — especially uploads
+    runtimeCaching: [
+      {
+        urlPattern: /^\/api\/.*/,
+        handler: 'NetworkOnly',
+      },
+    ],
   },
 });
 

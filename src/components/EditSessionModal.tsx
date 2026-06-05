@@ -186,9 +186,9 @@ export default function EditSessionModal({ anchorId, sessionDate, note, matches,
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Upload failed');
       setPhotoUrl(data.url);
-    } catch {
+    } catch (err) {
       setPhotoPreview(note.photoUrl ?? '');
-      setNoteError('Photo upload failed');
+      setNoteError(err instanceof Error ? err.message : 'Photo upload failed');
     } finally {
       setUploading(false);
     }
