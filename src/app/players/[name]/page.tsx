@@ -209,6 +209,17 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
               myPlayer={myPlayerName}
               existingRequest={existingRequest}
             />
+            {isClaimed && myPlayerName && myPlayerName.toUpperCase() !== name && (
+              <Link
+                href={`/messages/${encodeURIComponent(name)}`}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-lime-400 rounded-full transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                </svg>
+                Message
+              </Link>
+            )}
           </div>
           {profile?.bio && (
             <p className="text-slate-400 text-sm mt-1">{profile.bio}</p>

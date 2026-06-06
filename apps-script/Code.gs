@@ -350,6 +350,33 @@ function doPost(e) {
     return json({ ok: true });
   }
 
+  if (data.action === 'sendMessage') {
+    let sheet = ss.getSheetByName('MESSAGES');
+    if (!sheet) {
+      sheet = ss.insertSheet('MESSAGES');
+      sheet.appendRow(['messageId','fromPlayer','toPlayer','text','timestamp','read']);
+    }
+    const messageId = Utilities.getUuid();
+    sheet.appendRow([messageId, data.fromPlayer||'', data.toPlayer||'', data.text||'', data.timestamp||new Date().toISOString(), 'false']);
+    return json({ ok: true, messageId });
+  }
+
+  if (data.action === 'markMessagesRead') {
+    const sheet = ss.getSheetByName('MESSAGES');
+    if (!sheet) return json({ ok: true });
+    const rows = sheet.getDataRange().getValues();
+    const to   = (data.myPlayer    || '').toString().trim().toUpperCase();
+    const from = (data.otherPlayer || '').toString().trim().toUpperCase();
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][2]||'').toString().trim().toUpperCase() === to &&
+          (rows[i][1]||'').toString().trim().toUpperCase() === from &&
+          rows[i][5] !== 'true') {
+        sheet.getRange(i + 1, 6).setValue('true');
+      }
+    }
+    return json({ ok: true });
+  }
+
   if (data.action === 'createClub') {
     let sheet = ss.getSheetByName('CLUBS');
     if (!sheet) {

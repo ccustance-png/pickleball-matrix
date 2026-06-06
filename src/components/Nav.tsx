@@ -14,6 +14,7 @@ const links = [
   { href: '/activities', label: 'Activities' },
   { href: '/players', label: 'Power Rankings' },
   { href: '/clubs', label: 'Clubs' },
+  { href: '/messages', label: 'Messages' },
   { href: '/notifications', label: 'Inbox' },
   { href: '/rivalries', label: 'Rivalries' },
   { href: '/stats', label: 'Stats' },

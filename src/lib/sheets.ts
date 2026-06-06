@@ -381,6 +381,58 @@ export async function saveMatchNote(note: MatchNote): Promise<void> {
   });
 }
 
+export type DirectMessage = {
+  messageId: string;
+  fromPlayer: string;
+  toPlayer: string;
+  text: string;
+  timestamp: string;
+  read: string;
+};
+
+export async function getMessagesForPlayer(playerName: string): Promise<DirectMessage[]> {
+  const rows = await getTabRows('MESSAGES');
+  const upper = playerName.toUpperCase();
+  return rows.slice(1).filter(r =>
+    r[0] && (
+      r[1]?.toString().trim().toUpperCase() === upper ||
+      r[2]?.toString().trim().toUpperCase() === upper
+    )
+  ).map(r => ({
+    messageId: r[0]?.toString() ?? '',
+    fromPlayer: r[1]?.toString() ?? '',
+    toPlayer: r[2]?.toString() ?? '',
+    text: r[3]?.toString() ?? '',
+    timestamp: r[4]?.toString() ?? '',
+    read: r[5]?.toString() ?? 'false',
+  }));
+}
+
+export async function sendDirectMessage(
+  fromPlayer: string,
+  toPlayer: string,
+  text: string,
+): Promise<{ messageId: string }> {
+  const res = await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'sendMessage',
+      fromPlayer,
+      toPlayer,
+      text,
+      timestamp: new Date().toISOString(),
+    }),
+  });
+  return res.json();
+}
+
+export async function markMessagesRead(myPlayer: string, otherPlayer: string): Promise<void> {
+  await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'markMessagesRead', myPlayer, otherPlayer }),
+  });
+}
+
 export type Club = {
   clubId: string;
   name: string;
