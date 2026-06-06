@@ -51,20 +51,11 @@ export default function NewMessageButton({ friends }: { friends: Friend[] }) {
     setMessageText('');
   }
 
-  async function send() {
+  function send() {
     if (!selected || !messageText.trim() || sending) return;
-    setSending(true);
-    try {
-      await fetch(`/api/messages/${encodeURIComponent(selected.playerName)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: messageText.trim() }),
-      });
-      close();
-      router.push(`/messages/${encodeURIComponent(selected.playerName)}`);
-    } catch {
-      setSending(false);
-    }
+    const text = messageText.trim();
+    close();
+    router.push(`/messages/${encodeURIComponent(selected.playerName)}?draft=${encodeURIComponent(text)}`);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {

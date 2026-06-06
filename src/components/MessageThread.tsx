@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { DirectMessage, PlayerProfile } from '@/lib/sheets';
 
 type Props = {
@@ -30,11 +30,49 @@ export default function MessageThread({
   myPlayer, otherPlayer, otherDisplayName, otherPhotoUrl, initialMessages, profilesMap,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<DirectMessage[]>(initialMessages);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const draftSentRef = useRef(false);
+
+  // Auto-send a draft message passed via ?draft= param (from new message modal)
+  useEffect(() => {
+    const draft = searchParams.get('draft');
+    if (!draft || draftSentRef.current) return;
+    draftSentRef.current = true;
+    // Strip param from URL without remount
+    window.history.replaceState({}, '', `/messages/${encodeURIComponent(otherPlayer)}`);
+    const trimmed = decodeURIComponent(draft).trim();
+    if (!trimmed) return;
+    const optimistic: DirectMessage = {
+      messageId: `pending-${Date.now()}`,
+      fromPlayer: myPlayer,
+      toPlayer: otherPlayer,
+      text: trimmed,
+      timestamp: new Date().toISOString(),
+      read: 'false',
+    };
+    setMessages(prev => [...prev, optimistic]);
+    fetch(`/api/messages/${encodeURIComponent(otherPlayer)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: trimmed }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.messageId) {
+          setMessages(prev => prev.map(m =>
+            m.messageId === optimistic.messageId ? { ...m, messageId: data.messageId } : m,
+          ));
+        }
+      })
+      .catch(() => {
+        setMessages(prev => prev.filter(m => m.messageId !== optimistic.messageId));
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mark incoming messages as read on mount
   useEffect(() => {
