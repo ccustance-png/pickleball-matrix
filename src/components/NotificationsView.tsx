@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import type { FriendRequest, MatchRow, MatchNote, PlayerProfile } from '@/lib/sheets';
+import type { FriendRequest, MatchRow, MatchNote, PlayerProfile } from '@/lib/db';
 
 type Props = {
   myPlayer: string;

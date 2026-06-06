@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getMatchDinks, toggleMatchDink } from '@/lib/sheets';
+import { getMatchDinks, toggleMatchDink } from '@/lib/db';
 
 export async function GET(
   _req: Request,

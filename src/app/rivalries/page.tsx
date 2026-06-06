@@ -1,4 +1,4 @@
-import { getAllMatches, type MatchRow } from '@/lib/sheets';
+import { getAllMatches, type MatchRow } from '@/lib/db';
 import RivalriesView from '@/components/RivalriesView';
 
 export const revalidate = 15;

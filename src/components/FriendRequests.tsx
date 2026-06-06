@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { FriendRequest } from '@/lib/sheets';
+import type { FriendRequest } from '@/lib/db';
 
 export default function FriendRequests({
   incoming,

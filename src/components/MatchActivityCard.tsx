@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import type { MatchRow, MatchNote } from '@/lib/sheets';
+import type { MatchRow, MatchNote } from '@/lib/db';
 import MatchComments from './MatchComments';
 import ActivityCardActions from './ActivityCardActions';
 

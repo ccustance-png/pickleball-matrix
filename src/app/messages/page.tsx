@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getTabRows, getMessagesForPlayer, getAllProfilesMap, getFriendsForPlayer } from '@/lib/sheets';
+import { getPlayerByEmail, getMessagesForPlayer, getAllProfilesMap, getFriendsForPlayer } from '@/lib/db';
 import Link from 'next/link';
 import Image from 'next/image';
 import NewMessageButton from '@/components/NewMessageButton';
@@ -33,11 +33,8 @@ export default async function MessagesPage() {
     );
   }
 
-  const profileRows = await getTabRows('PROFILES').catch(() => [] as string[][]);
-  const profileRow = profileRows.slice(1).find(
-    r => (r[3] ?? '').toString().trim() === session.user!.email,
-  );
-  const myPlayer = profileRow?.[0]?.toString().trim() ?? null;
+  const myProfile = await getPlayerByEmail(session.user.email).catch(() => null);
+  const myPlayer = myProfile?.player ?? null;
 
   if (!myPlayer) {
     return (
@@ -54,7 +51,7 @@ export default async function MessagesPage() {
 
   const [messages, profilesMap, friendReqs] = await Promise.all([
     getMessagesForPlayer(myPlayer).catch(() => []),
-    getAllProfilesMap().catch(() => ({} as Record<string, import('@/lib/sheets').PlayerProfile>)),
+    getAllProfilesMap().catch(() => ({} as Record<string, import('@/lib/db').PlayerProfile>)),
     getFriendsForPlayer(myPlayer).catch(() => []),
   ]);
 

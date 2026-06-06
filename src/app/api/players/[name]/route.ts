@@ -1,62 +1,50 @@
 import { NextResponse } from 'next/server';
-import { getAllMatches, getTabRows, tabToObjects } from '@/lib/sheets';
+import { getAllMatches, getEloRankings } from '@/lib/db';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ name: string }> }) {
   try {
     const { name: rawName } = await params;
     const name = decodeURIComponent(rawName).toUpperCase();
 
-    const [matches, singlesRows, doublesRows, eloRows, gamelogRows] = await Promise.all([
+    const [matches, eloRankings] = await Promise.all([
       getAllMatches(),
-      getTabRows('SINGLES'),
-      getTabRows('DOUBLES'),
-      getTabRows('ELO'),
-      getTabRows('GAMELOG'),
+      getEloRankings(),
     ]);
 
-    const playerMatches = matches.filter((m) =>
-      m.players.split('/').map((p) => p.trim()).includes(name)
+    const playerMatches = matches.filter(m =>
+      m.players.split('/').map(p => p.trim()).includes(name)
     );
 
-    const singlesMatches = playerMatches.filter((m) => m.type === 'SINGLES');
-    const doublesMatches = playerMatches.filter((m) => m.type === 'DOUBLES');
-
-    const singlesWins = singlesMatches.filter((m) => m.win.trim() === name).length;
-    const doublesWins = doublesMatches.filter((m) =>
-      m.win.split('/').map((p) => p.trim()).includes(name)
+    const singlesMatches = playerMatches.filter(m => m.type === 'SINGLES');
+    const doublesMatches = playerMatches.filter(m => m.type === 'DOUBLES');
+    const singlesWins = singlesMatches.filter(m => m.win.trim() === name).length;
+    const doublesWins = doublesMatches.filter(m =>
+      m.win.split('/').map(p => p.trim()).includes(name)
     ).length;
 
-    const findRow = (rows: string[][]): Record<string, string> | null => {
-      const objs = tabToObjects(rows);
-      return objs.find((o) => Object.values(o)[0]?.toUpperCase().trim() === name) ?? null;
-    };
-
-    const singlesStats = findRow(singlesRows);
-    const doublesStats = findRow(doublesRows);
-    const eloStats = findRow(eloRows);
-    const gamelogStats = findRow(gamelogRows);
+    const singlesElo = eloRankings.singles.find(e => e.name.toUpperCase() === name)?.elo ?? 1000;
+    const doublesElo = eloRankings.doubles.find(e => e.name.toUpperCase() === name)?.elo ?? 1000;
 
     return NextResponse.json({
       name,
       overall: {
         matches: playerMatches.length,
         wins: singlesWins + doublesWins,
-        losses: playerMatches.length - singlesWins - doublesWins,
+        losses: playerMatches.length - (singlesWins + doublesWins),
       },
       singles: {
         matches: singlesMatches.length,
         wins: singlesWins,
         losses: singlesMatches.length - singlesWins,
-        stats: singlesStats,
+        stats: { elo: singlesElo },
       },
       doubles: {
         matches: doublesMatches.length,
         wins: doublesWins,
         losses: doublesMatches.length - doublesWins,
-        stats: doublesStats,
+        stats: { elo: doublesElo },
       },
-      elo: eloStats,
-      gamelog: gamelogStats,
+      elo: { singlesElo, doublesElo },
       recentMatches: [...playerMatches].reverse().slice(0, 15),
     });
   } catch (e) {

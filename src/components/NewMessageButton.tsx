@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import type { PlayerProfile } from '@/lib/sheets';
+import type { PlayerProfile } from '@/lib/db';
 
 type Friend = {
   playerName: string;

@@ -1,4 +1,4 @@
-import type { MatchRow } from '@/lib/sheets';
+import type { MatchRow } from '@/lib/db';
 
 type Props = {
   matches: MatchRow[];   // ALL matches (not just player's), needed for full ELO replay

@@ -1,4 +1,4 @@
-import { getAllMatches, getEloRankings } from '@/lib/sheets';
+import { getAllMatches, getEloRankings } from '@/lib/db';
 import PowerRankings from '@/components/PowerRankings';
 
 export const revalidate = 15;

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import GameCard, { type GameEntry, type Bracket, type MatchType, newGame } from './GameCard';
-import type { MatchNote, MatchRow } from '@/lib/sheets';
+import type { MatchNote, MatchRow } from '@/lib/db';
 
 type Props = {
   anchorId: number;

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import type { MatchRow, EloEntry } from '@/lib/sheets';
+import type { MatchRow, EloEntry } from '@/lib/db';
 
 // ── ELO replay (mirrors Apps Script exactly) ──────────────────────────────────
 const BASE_K = 32;

@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { updateFriendRequest } from '@/lib/sheets';
+import { updateFriendRequest } from '@/lib/db';
 
 export async function PATCH(
   req: Request,

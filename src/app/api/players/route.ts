@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllMatches, getAllProfilesMap } from '@/lib/sheets';
+import { getAllMatches, getAllProfilesMap } from '@/lib/db';
 
 export async function GET() {
   try {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
-import type { Challenge } from '@/lib/sheets';
+import type { Challenge } from '@/lib/db';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function timeAgo(iso: string) {

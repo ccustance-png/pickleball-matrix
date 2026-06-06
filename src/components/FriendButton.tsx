@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
-import type { FriendRequest } from '@/lib/sheets';
+import type { FriendRequest } from '@/lib/db';
 
 type Props = {
   targetPlayer: string;       // the profile being viewed

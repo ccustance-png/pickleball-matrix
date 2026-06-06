@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getAllMatches, getEloRankings, type MatchRow } from '@/lib/sheets';
+import { getAllMatches, getEloRankings, type MatchRow } from '@/lib/db';
 import EloTabs from '@/components/EloTabs';
 import HotRightNow from '@/components/HotRightNow';
 

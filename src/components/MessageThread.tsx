@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { DirectMessage, PlayerProfile } from '@/lib/sheets';
+import type { DirectMessage, PlayerProfile } from '@/lib/db';
 
 type Props = {
   myPlayer: string;

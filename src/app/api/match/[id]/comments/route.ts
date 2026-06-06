@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getMatchComments, addMatchComment, getAllMatches } from '@/lib/sheets';
+import { getMatchComments, addMatchComment, getAllMatches } from '@/lib/db';
 import { notifyPlayers } from '@/lib/push';
 
 export async function GET(

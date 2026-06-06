@@ -1,5 +1,5 @@
-import { getAllMatches, getAllMatchNotes } from '@/lib/sheets';
-import type { MatchRow, MatchNote } from '@/lib/sheets';
+import { getAllMatches, getAllMatchNotes } from '@/lib/db';
+import type { MatchRow, MatchNote } from '@/lib/db';
 import MatchActivityCard from '@/components/MatchActivityCard';
 import SessionActivityCard from '@/components/SessionActivityCard';
 

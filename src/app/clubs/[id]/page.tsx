@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getClubs, getAllClubMembers, getAllMatches, getAllProfilesMap } from '@/lib/sheets';
+import { getClubs, getAllClubMembers, getAllMatches, getAllProfilesMap } from '@/lib/db';
 import JoinClubButton from '@/components/JoinClubButton';
 
 export const revalidate = 15;
@@ -20,7 +20,7 @@ export default async function ClubDetailPage({ params }: { params: { id: string 
     getClubs().catch(() => []),
     getAllClubMembers().catch(() => []),
     getAllMatches().catch(() => []),
-    getAllProfilesMap().catch(() => ({} as Record<string, import('@/lib/sheets').PlayerProfile>)),
+    getAllProfilesMap().catch(() => ({} as Record<string, import('@/lib/db').PlayerProfile>)),
   ]);
 
   const club = clubs.find(c => c.clubId === params.id);
