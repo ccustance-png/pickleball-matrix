@@ -1,8 +1,9 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getTabRows, getMessagesForPlayer, getAllProfilesMap } from '@/lib/sheets';
+import { getTabRows, getMessagesForPlayer, getAllProfilesMap, getFriendsForPlayer } from '@/lib/sheets';
 import Link from 'next/link';
 import Image from 'next/image';
+import NewMessageButton from '@/components/NewMessageButton';
 
 export const revalidate = 0;
 
@@ -51,10 +52,24 @@ export default async function MessagesPage() {
     );
   }
 
-  const [messages, profilesMap] = await Promise.all([
+  const [messages, profilesMap, friendReqs] = await Promise.all([
     getMessagesForPlayer(myPlayer).catch(() => []),
     getAllProfilesMap().catch(() => ({} as Record<string, import('@/lib/sheets').PlayerProfile>)),
+    getFriendsForPlayer(myPlayer).catch(() => []),
   ]);
+
+  const acceptedFriends = friendReqs
+    .filter(r => r.status === 'ACCEPTED')
+    .map(r => r.fromPlayer.toUpperCase() === myPlayer.toUpperCase() ? r.toPlayer : r.fromPlayer)
+    .map(name => ({
+      playerName: name.toUpperCase(),
+      profile: profilesMap[name.toUpperCase()] ?? null,
+    }))
+    .sort((a, b) => {
+      const nameA = a.profile?.firstName ?? a.playerName;
+      const nameB = b.profile?.firstName ?? b.playerName;
+      return nameA.localeCompare(nameB);
+    });
 
   // Group messages by conversation partner
   const convMap = new Map<string, { lastMsg: typeof messages[0]; unread: number }>();
@@ -87,9 +102,12 @@ export default async function MessagesPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-100">Messages</h1>
-        <p className="text-slate-400 text-sm mt-1">Direct messages with other players</p>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100">Messages</h1>
+          <p className="text-slate-400 text-sm mt-1">Direct messages with other players</p>
+        </div>
+        <NewMessageButton friends={acceptedFriends} />
       </div>
 
       {conversations.length === 0 ? (
