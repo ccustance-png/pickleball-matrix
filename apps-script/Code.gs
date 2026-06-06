@@ -350,6 +350,56 @@ function doPost(e) {
     return json({ ok: true });
   }
 
+  if (data.action === 'createClub') {
+    let sheet = ss.getSheetByName('CLUBS');
+    if (!sheet) {
+      sheet = ss.insertSheet('CLUBS');
+      sheet.appendRow(['clubId','name','description','location','photoUrl','createdBy','createdAt']);
+    }
+    const clubId = Utilities.getUuid();
+    sheet.appendRow([clubId, data.name||'', data.description||'', data.location||'', data.photoUrl||'', data.createdBy||'', new Date().toISOString()]);
+    let membersSheet = ss.getSheetByName('CLUB_MEMBERS');
+    if (!membersSheet) {
+      membersSheet = ss.insertSheet('CLUB_MEMBERS');
+      membersSheet.appendRow(['clubId','playerName','joinedAt']);
+    }
+    if (data.createdBy) membersSheet.appendRow([clubId, data.createdBy, new Date().toISOString()]);
+    return json({ ok: true, clubId });
+  }
+
+  if (data.action === 'joinClub') {
+    let sheet = ss.getSheetByName('CLUB_MEMBERS');
+    if (!sheet) {
+      sheet = ss.insertSheet('CLUB_MEMBERS');
+      sheet.appendRow(['clubId','playerName','joinedAt']);
+    }
+    const rows = sheet.getDataRange().getValues();
+    const cid = data.clubId;
+    const pname = (data.playerName || '').toString().trim().toUpperCase();
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === cid && (rows[i][1]||'').toString().trim().toUpperCase() === pname) {
+        return json({ ok: true, already: true });
+      }
+    }
+    sheet.appendRow([cid, data.playerName, new Date().toISOString()]);
+    return json({ ok: true });
+  }
+
+  if (data.action === 'leaveClub') {
+    const sheet = ss.getSheetByName('CLUB_MEMBERS');
+    if (!sheet) return json({ ok: false });
+    const rows = sheet.getDataRange().getValues();
+    const cid = data.clubId;
+    const pname = (data.playerName || '').toString().trim().toUpperCase();
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === cid && (rows[i][1]||'').toString().trim().toUpperCase() === pname) {
+        sheet.deleteRow(i + 1);
+        return json({ ok: true });
+      }
+    }
+    return json({ ok: false });
+  }
+
   // Default: submit match
   const sheet = ss.getSheetByName('SCORESHEET');
   const matchId = sheet.getLastRow();

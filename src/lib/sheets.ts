@@ -381,6 +381,72 @@ export async function saveMatchNote(note: MatchNote): Promise<void> {
   });
 }
 
+export type Club = {
+  clubId: string;
+  name: string;
+  description: string;
+  location: string;
+  photoUrl: string;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type ClubMember = {
+  clubId: string;
+  playerName: string;
+  joinedAt: string;
+};
+
+export async function getClubs(): Promise<Club[]> {
+  const rows = await getTabRows('CLUBS');
+  return rows.slice(1).filter(r => r[0]).map(r => ({
+    clubId: r[0]?.toString() ?? '',
+    name: r[1]?.toString() ?? '',
+    description: r[2]?.toString() ?? '',
+    location: r[3]?.toString() ?? '',
+    photoUrl: r[4]?.toString() ?? '',
+    createdBy: r[5]?.toString() ?? '',
+    createdAt: r[6]?.toString() ?? '',
+  }));
+}
+
+export async function getAllClubMembers(): Promise<ClubMember[]> {
+  const rows = await getTabRows('CLUB_MEMBERS');
+  return rows.slice(1).filter(r => r[0]).map(r => ({
+    clubId: r[0]?.toString() ?? '',
+    playerName: r[1]?.toString() ?? '',
+    joinedAt: r[2]?.toString() ?? '',
+  }));
+}
+
+export async function createClub(
+  name: string,
+  description: string,
+  location: string,
+  photoUrl: string,
+  createdBy: string,
+): Promise<{ clubId: string }> {
+  const res = await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'createClub', name, description, location, photoUrl, createdBy }),
+  });
+  return res.json();
+}
+
+export async function joinClub(clubId: string, playerName: string): Promise<void> {
+  await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'joinClub', clubId, playerName }),
+  });
+}
+
+export async function leaveClub(clubId: string, playerName: string): Promise<void> {
+  await fetch(scriptUrl(), {
+    method: 'POST',
+    body: JSON.stringify({ action: 'leaveClub', clubId, playerName }),
+  });
+}
+
 export function tabToObjects(rows: string[][]): Record<string, string>[] {
   if (rows.length < 2) return [];
   const [headers, ...data] = rows;
