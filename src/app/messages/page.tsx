@@ -53,7 +53,7 @@ export default async function MessagesPage() {
 
   const [messages, profilesMap] = await Promise.all([
     getMessagesForPlayer(myPlayer).catch(() => []),
-    getAllProfilesMap().catch(() => ({})),
+    getAllProfilesMap().catch(() => ({} as Record<string, import('@/lib/sheets').PlayerProfile>)),
   ]);
 
   // Group messages by conversation partner

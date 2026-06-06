@@ -20,7 +20,7 @@ export default async function ClubDetailPage({ params }: { params: { id: string 
     getClubs().catch(() => []),
     getAllClubMembers().catch(() => []),
     getAllMatches().catch(() => []),
-    getAllProfilesMap().catch(() => ({})),
+    getAllProfilesMap().catch(() => ({} as Record<string, import('@/lib/sheets').PlayerProfile>)),
   ]);
 
   const club = clubs.find(c => c.clubId === params.id);

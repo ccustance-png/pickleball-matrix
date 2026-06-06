@@ -28,7 +28,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ player:
 
   const [allMessages, profilesMap, otherProfile] = await Promise.all([
     getMessagesForPlayer(myPlayer).catch(() => []),
-    getAllProfilesMap().catch(() => ({})),
+    getAllProfilesMap().catch(() => ({} as Record<string, import('@/lib/sheets').PlayerProfile>)),
     getProfile(otherPlayer).catch(() => null),
   ]);
 
