@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { EloEntry } from '@/lib/db';
+import type { EloEntry } from '@/lib/sheets';
 import type { StreakMap } from '@/app/page';
 
 type WLRecord = { wins: number; losses: number };

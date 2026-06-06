@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
-import type { MatchComment } from '@/lib/db';
+import type { MatchComment } from '@/lib/sheets';
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();

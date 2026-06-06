@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getPlayerByEmail, getAllClubMembers, joinClub, leaveClub } from '@/lib/db';
+import { getTabRows, getAllClubMembers, joinClub, leaveClub } from '@/lib/sheets';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,8 +8,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return Response.json({ isMember: false, playerName: null });
 
-  const profile = await getPlayerByEmail(session.user.email).catch(() => null);
-  const playerName = profile?.player ?? null;
+  const rows = await getTabRows('PROFILES').catch(() => [] as string[][]);
+  const profile = rows.slice(1).find(r => (r[3] ?? '').toString().trim() === session.user!.email);
+  const playerName = profile?.[0]?.toString().trim() ?? null;
   if (!playerName) return Response.json({ isMember: false, playerName: null });
 
   const members = await getAllClubMembers().catch(() => []);
@@ -28,8 +29,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return Response.json({ error: 'Invalid action' }, { status: 400 });
   }
 
-  const profile = await getPlayerByEmail(session.user.email).catch(() => null);
-  const playerName = profile?.player;
+  const rows = await getTabRows('PROFILES').catch(() => [] as string[][]);
+  const profile = rows.slice(1).find(r => (r[3] ?? '').toString().trim() === session.user!.email);
+  const playerName = profile?.[0]?.toString().trim();
   if (!playerName) return Response.json({ error: 'No claimed profile found' }, { status: 404 });
 
   if (action === 'join') {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { MatchRow, MatchNote } from '@/lib/db';
+import type { MatchRow, MatchNote } from '@/lib/sheets';
 import MatchActivityCard from './MatchActivityCard';
 import SessionActivityCard from './SessionActivityCard';
 import MatchHistory from './MatchHistory';

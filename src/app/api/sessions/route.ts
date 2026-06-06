@@ -1,5 +1,5 @@
 import { revalidatePath } from 'next/cache';
-import { appendMatch, saveMatchNote } from '@/lib/db';
+import { appendMatch, saveMatchNote } from '@/lib/sheets';
 import { notifyPlayers } from '@/lib/push';
 
 type GamePayload = {

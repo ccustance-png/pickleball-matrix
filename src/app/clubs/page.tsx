@@ -1,4 +1,4 @@
-import { getClubs, getAllClubMembers } from '@/lib/db';
+import { getClubs, getAllClubMembers } from '@/lib/sheets';
 import ClubsList from '@/components/ClubsList';
 
 export const revalidate = 15;

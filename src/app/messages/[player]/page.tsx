@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getPlayerByEmail, getMessagesForPlayer, getAllProfilesMap, getProfile } from '@/lib/db';
+import { getTabRows, getMessagesForPlayer, getAllProfilesMap, getProfile } from '@/lib/sheets';
 import { notFound } from 'next/navigation';
 import MessageThread from '@/components/MessageThread';
 
@@ -19,13 +19,16 @@ export default async function ThreadPage({ params }: { params: Promise<{ player:
     );
   }
 
-  const myProfile = await getPlayerByEmail(session.user.email).catch(() => null);
-  const myPlayer = myProfile?.player ?? null;
+  const profileRows = await getTabRows('PROFILES').catch(() => [] as string[][]);
+  const profileRow = profileRows.slice(1).find(
+    r => (r[3] ?? '').toString().trim() === session.user!.email,
+  );
+  const myPlayer = profileRow?.[0]?.toString().trim() ?? null;
   if (!myPlayer) notFound();
 
   const [allMessages, profilesMap, otherProfile] = await Promise.all([
     getMessagesForPlayer(myPlayer).catch(() => []),
-    getAllProfilesMap().catch(() => ({} as Record<string, import('@/lib/db').PlayerProfile>)),
+    getAllProfilesMap().catch(() => ({} as Record<string, import('@/lib/sheets').PlayerProfile>)),
     getProfile(otherPlayer).catch(() => null),
   ]);
 

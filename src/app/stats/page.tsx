@@ -1,4 +1,4 @@
-import { getAllMatches, getEloRankings } from '@/lib/db';
+import { getAllMatches, getEloRankings } from '@/lib/sheets';
 import StatsTabs from '@/components/StatsTabs';
 
 export const revalidate = 15;

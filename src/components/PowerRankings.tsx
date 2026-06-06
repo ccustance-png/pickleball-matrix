@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import type { MatchRow, EloEntry } from '@/lib/db';
+import type { MatchRow, EloEntry } from '@/lib/sheets';
 
 type WLMap = Record<string, { wins: number; losses: number }>;
 

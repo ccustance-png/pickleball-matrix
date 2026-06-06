@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { updateChallengeStatus } from '@/lib/db';
+import { updateChallengeStatus } from '@/lib/sheets';
 
 export async function PATCH(
   req: Request,

@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getAllMatches, getPlayerByEmail, getProfile, getEloRankings, getMatchNotes, getDisplayName, getFriendsForPlayer } from '@/lib/db';
+import { getAllMatches, getTabRows, tabToObjects, getProfile, getEloRankings, getMatchNotes, getDisplayName, getFriendsForPlayer } from '@/lib/sheets';
 import { computePlayerData } from '@/lib/badges';
 import ClaimButton from '@/components/ClaimButton';
 import ProfileTabs from '@/components/ProfileTabs';
@@ -32,8 +32,10 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
   const { name: rawName } = await params;
   const name = decodeURIComponent(rawName).toUpperCase();
 
-  const [matches, eloRankings, profile, session, friendData] = await Promise.all([
+  const [matches, singlesRows, doublesRows, eloRankings, profile, session, friendData] = await Promise.all([
     getAllMatches().catch(() => []),
+    getTabRows('SINGLES').catch(() => []),
+    getTabRows('DOUBLES').catch(() => []),
     getEloRankings().catch(() => ({ singles: [], doubles: [] })),
     getProfile(name),
     getServerSession(authOptions),
@@ -55,10 +57,12 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
   const isClaimed = !!profile?.googleEmail;
   const isOwner = !!session?.user?.email && session.user.email === profile?.googleEmail;
 
-  const myProfileData = session?.user?.email
-    ? await getPlayerByEmail(session.user.email).catch(() => null)
+  // Logged-in user's player name (for friend button)
+  const allProfiles = await getTabRows('PROFILES').catch(() => [] as string[][]);
+  const myProfile = session?.user?.email
+    ? allProfiles.slice(1).find(r => (r[3] ?? '').toString().trim() === session.user!.email)
     : null;
-  const myPlayerName = myProfileData?.player ?? null;
+  const myPlayerName = myProfile?.[0]?.toString().trim() ?? null;
 
   // Friends: requests TO this player (incoming) and FROM this player (outgoing accepted)
   const allFriendData = await getFriendsForPlayer(name).catch(() => [] as typeof friendData);
@@ -155,10 +159,18 @@ export default async function PlayerPage({ params }: { params: Promise<{ name: s
     .sort((a, b) => (b[1].wins + b[1].losses) - (a[1].wins + a[1].losses))
     .slice(0, 6);
 
+  const findPlayerStats = (rows: string[][]): Record<string, string> | null => {
+    const objs = tabToObjects(rows);
+    return objs.find((o) => {
+      const firstVal = Object.values(o)[0];
+      return firstVal?.toUpperCase().trim() === name;
+    }) ?? null;
+  };
+
+  const singlesStats = findPlayerStats(singlesRows);
+  const doublesStats = findPlayerStats(doublesRows);
   const singlesElo = eloRankings.singles.find((e) => e.name.toUpperCase() === name)?.elo ?? null;
   const doublesElo = eloRankings.doubles.find((e) => e.name.toUpperCase() === name)?.elo ?? null;
-  const singlesStats = singlesElo !== null ? { elo: String(singlesElo) } : null;
-  const doublesStats = doublesElo !== null ? { elo: String(doublesElo) } : null;
 
   const recentMatches = [...playerMatches].reverse().slice(0, 15);
 

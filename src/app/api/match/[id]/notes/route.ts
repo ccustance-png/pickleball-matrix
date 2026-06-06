@@ -1,4 +1,4 @@
-import { getMatchNotes, saveMatchNote } from '@/lib/db';
+import { getMatchNotes, saveMatchNote } from '@/lib/sheets';
 
 export async function GET(
   _req: Request,

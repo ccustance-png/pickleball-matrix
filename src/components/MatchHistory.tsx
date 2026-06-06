@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { MatchRow } from '@/lib/db';
+import type { MatchRow } from '@/lib/sheets';
 
 type Props = {
   matches: MatchRow[];

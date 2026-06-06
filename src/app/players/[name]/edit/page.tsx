@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getProfile, getAllMatches } from '@/lib/db';
+import { getProfile, getAllMatches } from '@/lib/sheets';
 import ProfileEditForm from '@/components/ProfileEditForm';
 
 export default async function EditProfilePage({ params }: { params: Promise<{ name: string }> }) {

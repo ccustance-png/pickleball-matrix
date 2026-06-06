@@ -1,4 +1,4 @@
-import { getAllMatches, getChallenges } from '@/lib/db';
+import { getAllMatches, getChallenges } from '@/lib/sheets';
 import ChallengeFeed from '@/components/ChallengeFeed';
 
 export const revalidate = 0;

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { deleteMatch, updateMatch } from '@/lib/db';
+import { deleteMatch, updateMatch } from '@/lib/sheets';
 
 export async function PUT(
   req: Request,

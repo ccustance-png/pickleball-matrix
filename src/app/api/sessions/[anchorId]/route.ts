@@ -1,4 +1,4 @@
-import { appendMatch, saveMatchNote } from '@/lib/db';
+import { appendMatch, saveMatchNote } from '@/lib/sheets';
 
 type GamePayload = {
   bracket: 'COMPETITIVE' | 'CASUAL';
